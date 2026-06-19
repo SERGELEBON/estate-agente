@@ -67,6 +67,9 @@ export async function POST(request: NextRequest) {
     );
   } catch (error: any) {
     console.error("[Register] Error:", error);
+    console.error("[Register] Error name:", error?.name);
+    console.error("[Register] Error message:", error?.message);
+    console.error("[Register] Error stack:", error?.stack);
 
     if (error.name === "ZodError") {
       const firstError = error.issues?.[0]?.message || "Validation failed";
@@ -76,8 +79,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (error?.code === 'P2002') {
+      return NextResponse.json(
+        { error: "Email already exists" },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
-      { error: "Failed to create account. Please try again." },
+      { error: error?.message || "Failed to create account. Please try again." },
       { status: 500 }
     );
   }
