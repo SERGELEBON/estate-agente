@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function EditAdminPropertyPage() {
   const params = useParams();
-  const id = params.id as string;
+  const id = params?.id as string;
   const [property, setProperty] = useState<any>(null);
   const [agents, setAgents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
