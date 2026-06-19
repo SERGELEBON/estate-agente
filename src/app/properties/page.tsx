@@ -51,7 +51,7 @@ function PropertiesContent() {
     async function fetchProperties() {
       setLoading(true);
       try {
-        const params = new URLSearchParams(searchParams.toString());
+        const params = new URLSearchParams(searchParams?.toString() || "");
         if (!params.has("page")) params.set("page", "1");
         params.set("limit", "12");
         const res = await fetch(`/api/properties?${params.toString()}`);
@@ -70,7 +70,7 @@ function PropertiesContent() {
   }, [searchParams]);
 
   const updatePage = (newPage: number) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() || "");
     params.set("page", newPage.toString());
     window.location.href = `/properties?${params.toString()}`;
   };

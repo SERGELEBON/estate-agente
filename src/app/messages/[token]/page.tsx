@@ -69,7 +69,7 @@ function getFirstImage(imagesJson: string): string {
 
 export default function VisitorConversationPage() {
   const params = useParams();
-  const token = params.token as string;
+  const token = params?.token as string;
 
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [loading, setLoading] = useState(true);

@@ -248,7 +248,7 @@ export default function DashboardLayout({
     redirectAttempted.current = false;
 
     // Role-based route protection: redirect if user accesses wrong dashboard
-    if (isAuthenticated && role) {
+    if (isAuthenticated && role && pathname) {
       if (role === "ADMIN" && pathname.startsWith("/dashboard/agent")) {
         router.replace("/dashboard/admin");
       } else if (role === "AGENT" && pathname.startsWith("/dashboard/admin")) {
