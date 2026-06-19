@@ -128,7 +128,7 @@ function ShortTermContent() {
           // Only show property types relevant to short-term stays
           const shortTermTypes = ["APARTMENT", "HOTEL", "HOSTEL"];
           const filtered = (data.properties || []).filter(
-            (p: Property) =>
+            (p: any) =>
               shortTermTypes.includes(p.type) && p.furnished
           );
           setProperties(filtered);
