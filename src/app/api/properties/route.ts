@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
     }
 
     const property = await db.property.create({
-      data: validatedData,
+      data: validatedData as any,
       include: {
         agent: {
           select: {
