@@ -95,7 +95,23 @@ export const authOptions: NextAuthOptions = {
   //   - It causes signIn() to return errors even when authorize() succeeds
   // When OAuth is added later, we'll handle user creation manually in the signIn callback.
   providers,
-  session: { strategy: "jwt" },
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === "production"
+        ? "__Secure-next-auth.session-token"
+        : "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       // On sign in, add role and id to token from the user object returned by authorize()
