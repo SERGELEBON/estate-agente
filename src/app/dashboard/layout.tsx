@@ -97,7 +97,7 @@ function SidebarContent({
   unreadCount,
 }: {
   navItems: typeof agentNavItems;
-  pathname: string;
+  pathname: string | null;
   user: any;
   onNavigate?: () => void;
   unreadCount?: number;
@@ -127,7 +127,7 @@ function SidebarContent({
             pathname === item.href ||
             (item.href !== "/dashboard/agent" &&
               item.href !== "/dashboard/admin" &&
-              pathname.startsWith(item.href));
+              pathname?.startsWith(item.href));
           const showBadge =
             unreadCount && unreadCount > 0 && item.label === "Messages";
           return (
