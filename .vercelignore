@@ -1,0 +1,4 @@
+examples/
+skills/
+*.md
+!README.md
