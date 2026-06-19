@@ -48,40 +48,56 @@ function SignInForm() {
     setLoading(true);
 
     try {
+      console.log("[SignIn] Attempting login for:", email);
+
       const result = await signIn("credentials", {
         email,
         password,
         redirect: false,
       });
 
+      console.log("[SignIn] SignIn result:", result);
+
       if (result?.error) {
+        console.error("[SignIn] Error from signIn:", result.error);
         setError("Email ou mot de passe incorrect. Veuillez réessayer.");
         setLoading(false);
         return;
       }
 
       if (!result?.ok) {
+        console.error("[SignIn] SignIn not ok:", result);
         setError("La connexion a échoué. Veuillez réessayer.");
         setLoading(false);
         return;
       }
 
+      console.log("[SignIn] Login successful, fetching session...");
+
       // After successful login, fetch session to get the role
       // then redirect directly to the correct dashboard
       const sessionRes = await fetch("/api/auth/session");
+      console.log("[SignIn] Session response status:", sessionRes.status);
+
       if (sessionRes.ok) {
         const sessionData = await sessionRes.json();
+        console.log("[SignIn] Session data:", sessionData);
         const role = sessionData?.user?.role;
+
         if (role === "ADMIN") {
+          console.log("[SignIn] Redirecting to admin dashboard");
           router.replace("/dashboard/admin");
         } else {
+          console.log("[SignIn] Redirecting to agent dashboard");
           router.replace("/dashboard/agent");
         }
       } else {
+        console.log("[SignIn] Session fetch failed, using fallback redirect");
         // Fallback: redirect to /dashboard which handles role-based routing
         router.replace("/dashboard");
       }
     } catch (err) {
+      console.error("[SignIn] Exception during login:", err);
       setError("Une erreur est survenue. Veuillez réessayer.");
       setLoading(false);
     }
