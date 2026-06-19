@@ -15,35 +15,53 @@ const providers: NextAuthOptions["providers"] = [
       password: { label: "Password", type: "password" },
     },
     async authorize(credentials) {
-      if (!credentials?.email || !credentials?.password) {
-        console.log("[Auth] Missing email or password");
+      try {
+        console.log("[Auth] Authorize called with email:", credentials?.email);
+
+        if (!credentials?.email || !credentials?.password) {
+          console.log("[Auth] Missing email or password");
+          return null;
+        }
+
+        console.log("[Auth] Looking up user in database...");
+        const user = await db.user.findUnique({
+          where: { email: credentials.email.toLowerCase().trim() },
+        });
+
+        if (!user) {
+          console.log("[Auth] User not found:", credentials.email);
+          return null;
+        }
+
+        console.log("[Auth] User found:", user.email, "Has password:", !!user.password);
+
+        if (!user.password) {
+          console.log("[Auth] No password (OAuth user)");
+          return null;
+        }
+
+        console.log("[Auth] Comparing passwords...");
+        const isValid = await compare(credentials.password, user.password);
+
+        if (!isValid) {
+          console.log("[Auth] Invalid password for:", credentials.email);
+          return null;
+        }
+
+        console.log("[Auth] Login successful:", user.email, "Role:", user.role);
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          image: user.image,
+        };
+      } catch (error: any) {
+        console.error("[Auth] Error in authorize:", error.message);
+        console.error("[Auth] Error stack:", error.stack);
         return null;
       }
-
-      const user = await db.user.findUnique({
-        where: { email: credentials.email.toLowerCase().trim() },
-      });
-
-      if (!user || !user.password) {
-        console.log("[Auth] User not found or no password:", credentials.email);
-        return null;
-      }
-
-      const isValid = await compare(credentials.password, user.password);
-      if (!isValid) {
-        console.log("[Auth] Invalid password for:", credentials.email);
-        return null;
-      }
-
-      console.log("[Auth] Login successful:", user.email, "Role:", user.role);
-
-      return {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        image: user.image,
-      };
     },
   }),
 ];
@@ -148,7 +166,7 @@ export const authOptions: NextAuthOptions = {
     error: "/auth/signin",
   },
   secret: process.env.NEXTAUTH_SECRET ?? "state-immocom-secret-key-dev-2024",
-  debug: process.env.NODE_ENV === "development",
+  debug: true,
 };
 
 // Export helper to check which OAuth providers are configured
