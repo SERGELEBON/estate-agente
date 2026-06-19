@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── NextAuth Models ────────────────────────────────────────
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String  @id @default(cuid())
+  sessionToken String  @unique
+  userId       String
+  expires      DateTime
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── User Model ─────────────────────────────────────────────
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // hashed – null for OAuth-only users
+  role          String    @default("AGENT") // ADMIN | AGENT
+  phone         String?
+  company       String?   // agency name
+  license       String?   // real estate license number
+  bio           String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts            Account[]
+  sessions            Session[]
+  properties          Property[]
+  receivedMessages    Message[]  @relation("AgentMessages")
+  visits              Visit[]
+  agentConversations  Conversation[] @relation("AgentConversations")
+  sentMessages        Message[]  @relation("MessageSenders")
+}
+
+// ─── Property Model ─────────────────────────────────────────
+model Property {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String
+  price       Float
+  currency    String   @default("GHC")
+  location    String   // e.g. "East Legon, Accra"
+  city        String   @default("Accra")
+  region      String   @default("Greater Accra")
+  country     String   @default("Ghana")
+  type        String   // APARTMENT | HOUSE | VILLA | LAND | COMMERCIAL | OFFICE | HOTEL | HOSTEL
+  status      String   @default("AVAILABLE") // AVAILABLE | SOLD | RENTED | RESERVED
+  listingType   String   @default("SALE") // SALE | RENT
+  priceDuration String   @default("MONTH") // DAY | MONTH | YEAR — for rental price duration
+  bedrooms      Int?
+  bathrooms   Int?
+  area        Float?   // square meters
+  furnished   Boolean  @default(false)
+  parking     Boolean  @default(false)
+  pool        Boolean  @default(false)
+  gym         Boolean  @default(false)
+  images      String   @default("[]") // JSON array of image URLs
+  videos      String   @default("[]") // JSON array of video URLs
+  featured    Boolean  @default(false)
+  views       Int      @default(0)
+  agentId     String
+  agent       User     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  messages       Message[]
+  visits         Visit[]
+  conversations  Conversation[]
+}
+
+// ─── Conversation Model (social-network style) ──────────────
+// One conversation per (visitor, agent, property) — reusing if visitor re-inquires.
+model Conversation {
+  id                String    @id @default(cuid())
+  propertyId        String?
+  property          Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  agentId           String
+  agent             User      @relation("AgentConversations", fields: [agentId], references: [id], onDelete: Cascade)
+
+  // Visitor info (visitor is NOT a registered user — they get a magic link to view replies)
+  visitorName       String
+  visitorEmail      String
+  visitorPhone      String?
+  visitorToken      String    @unique  // magic link token
+
+  subject           String
+  lastMessageAt     DateTime  @default(now())
+  unreadForAgent    Int       @default(0)
+  unreadForVisitor  Int       @default(0)
+  closed            Boolean   @default(false)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  messages          Message[]
+}
+
+// ─── Message Model ──────────────────────────────────────────
+model Message {
+  id              String   @id @default(cuid())
+
+  // New conversation-based fields (nullable for legacy messages)
+  conversationId  String?
+  conversation    Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderType      String   @default("VISITOR") // VISITOR | AGENT | ADMIN
+  senderUserId    String?  // agent/admin user id when applicable
+  senderUser      User?    @relation("MessageSenders", fields: [senderUserId], references: [id], onDelete: SetNull)
+  body            String
+
+  // Legacy fields kept for backward compat with old /api/messages and existing rows
+  senderName      String   @default("")
+  senderEmail     String   @default("")
+  senderPhone     String?
+  subject         String   @default("")
+  isRead          Boolean  @default(false)
+
+  propertyId      String?
+  property        Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  agentId         String?
+  agent           User?     @relation("AgentMessages", fields: [agentId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ─── Visit Model ────────────────────────────────────────────
+model Visit {
+  id          String   @id @default(cuid())
+  visitorName String
+  visitorEmail String
+  visitorPhone String
+  visitDate   DateTime
+  status      String   @default("SCHEDULED") // SCHEDULED | COMPLETED | CANCELLED
+  notes       String?
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  agentId     String
+  agent       User     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

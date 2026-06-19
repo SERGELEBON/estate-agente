@@ -1,0 +1,803 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useState } from "react";
+     4→import { useParams } from "next/navigation";
+     5→import Link from "next/link";
+     6→import Image from "next/image";
+     7→import { Navbar } from "@/components/navbar";
+     8→import { Footer } from "@/components/footer";
+     9→import { PropertyCard } from "@/components/property-card";
+    10→import { Badge } from "@/components/ui/badge";
+    11→import { Button } from "@/components/ui/button";
+    12→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+    13→import { Input } from "@/components/ui/input";
+    14→import { Label } from "@/components/ui/label";
+    15→import { Textarea } from "@/components/ui/textarea";
+    16→import { Skeleton } from "@/components/ui/skeleton";
+    17→import { Separator } from "@/components/ui/separator";
+    18→import {
+    19→  formatPrice,
+    20→  formatArea,
+    21→  getPropertyTypeLabel,
+    22→  getListingTypeLabel,
+    23→  getStatusLabel,
+    24→  getPriceDurationLabel,
+    25→} from "@/lib/helpers";
+    26→import {
+    27→  Bed,
+    28→  Bath,
+    29→  Maximize,
+    30→  MapPin,
+    31→  Car,
+    32→  Waves,
+    33→  Dumbbell,
+    34→  Sofa,
+    35→  Eye,
+    36→  Phone,
+    37→  Mail,
+    38→  Building2,
+    39→  ChevronLeft,
+    40→  ChevronRight,
+    41→  Send,
+    42→  CalendarDays,
+    43→  Video,
+    44→} from "lucide-react";
+    45→import { toast } from "sonner";
+    46→
+    47→interface Property {
+    48→  id: string;
+    49→  title: string;
+    50→  slug: string;
+    51→  description: string;
+    52→  price: number;
+    53→  currency: string;
+    54→  location: string;
+    55→  city: string;
+    56→  region: string;
+    57→  country: string;
+    58→  type: string;
+    59→  status: string;
+    60→  listingType: string;
+    61→  priceDuration: string;
+    62→  bedrooms: number | null;
+    63→  bathrooms: number | null;
+    64→  area: number | null;
+    65→  furnished: boolean;
+    66→  parking: boolean;
+    67→  pool: boolean;
+    68→  gym: boolean;
+    69→  images: string;
+    70→  videos: string;
+    71→  featured: boolean;
+    72→  views: number;
+    73→  agent: {
+    74→    id: string;
+    75→    name: string;
+    76→    email: string;
+    77→    phone: string;
+    78→    company: string;
+    79→    license: string | null;
+    80→    image: string | null;
+    81→    bio: string | null;
+    82→  };
+    83→  createdAt: string;
+    84→}
+    85→
+    86→export default function PropertyDetailPage() {
+    87→  const params = useParams();
+    88→  const id = params.id as string;
+    89→  const [property, setProperty] = useState<Property | null>(null);
+    90→  const [similar, setSimilar] = useState<any[]>([]);
+    91→  const [loading, setLoading] = useState(true);
+    92→  const [currentImage, setCurrentImage] = useState(0);
+    93→  const [contactForm, setContactForm] = useState({
+    94→    senderName: "",
+    95→    senderEmail: "",
+    96→    senderPhone: "",
+    97→    subject: "",
+    98→    body: "",
+    99→  });
+   100→  const [visitForm, setVisitForm] = useState({
+   101→    visitorName: "",
+   102→    visitorEmail: "",
+   103→    visitorPhone: "",
+   104→    visitDate: "",
+   105→    notes: "",
+   106→  });
+   107→  const [submitting, setSubmitting] = useState(false);
+   108→
+   109→  useEffect(() => {
+   110→    async function fetchProperty() {
+   111→      try {
+   112→        const res = await fetch(`/api/properties/${id}`);
+   113→        if (res.ok) {
+   114→          const data = await res.json();
+   115→          setProperty(data);
+   116→          setContactForm((prev) => ({
+   117→            ...prev,
+   118→            subject: `Inquiry about ${data.title}`,
+   119→          }));
+   120→        }
+   121→      } catch {
+   122→        // silently handle
+   123→      } finally {
+   124→        setLoading(false);
+   125→      }
+   126→    }
+   127→    if (id) fetchProperty();
+   128→  }, [id]);
+   129→
+   130→  useEffect(() => {
+   131→    async function fetchSimilar() {
+   132→      if (!property) return;
+   133→      try {
+   134→        const params = new URLSearchParams();
+   135→        if (property.type) params.set("type", property.type);
+   136→        params.set("limit", "3");
+   137→        const res = await fetch(`/api/properties?${params.toString()}`);
+   138→        if (res.ok) {
+   139→          const data = await res.json();
+   140→          setSimilar(
+   141→            (data.properties || []).filter((p: any) => p.id !== property.id)
+   142→          );
+   143→        }
+   144→      } catch {
+   145→        // silently handle
+   146→      }
+   147→    }
+   148→    if (property) fetchSimilar();
+   149→  }, [property]);
+   150→
+   151→  const images: string[] = property ? JSON.parse(property.images || "[]") : [];
+   152→  const videos: string[] = property ? JSON.parse(property.videos || "[]") : [];
+   153→
+   154→  const handleContactSubmit = async (e: React.FormEvent) => {
+   155→    e.preventDefault();
+   156→    if (!property) return;
+   157→    setSubmitting(true);
+   158→    try {
+   159→      const res = await fetch("/api/conversations", {
+   160→        method: "POST",
+   161→        headers: { "Content-Type": "application/json" },
+   162→        body: JSON.stringify({
+   163→          visitorName: contactForm.senderName,
+   164→          visitorEmail: contactForm.senderEmail,
+   165→          visitorPhone: contactForm.senderPhone || undefined,
+   166→          subject: contactForm.subject,
+   167→          body: contactForm.body,
+   168→          propertyId: property.id,
+   169→          agentId: property.agent.id,
+   170→        }),
+   171→      });
+   172→      if (res.ok) {
+   173→        const data = await res.json();
+   174→        const token = data.conversation?.visitorToken;
+   175→        const conversationId = data.conversation?.id;
+   176→        toast.success("Message sent! The agent will reply in your inbox here.", {
+   177→          duration: 6000,
+   178→        });
+   179→        setContactForm({
+   180→          senderName: "",
+   181→          senderEmail: "",
+   182→          senderPhone: "",
+   183→          subject: "",
+   184→          body: "",
+   185→        });
+   186→        // Offer the visitor a link to view the conversation (magic token)
+   187→        if (token && conversationId) {
+   188→          const link = `/messages/${token}`;
+   189→          setTimeout(() => {
+   190→            toast(
+   191→              <div className="space-y-1">
+   192→                <p className="font-medium">Track this conversation</p>
+   193→                <a
+   194→                  href={link}
+   195→                  className="text-sm underline"
+   196→                  style={{ color: "#2E8B57" }}
+   197→                >
+   198→                  Open your inbox →
+   199→                </a>
+   200→              </div>,
+   201→              { duration: 12000 }
+   202→            );
+   203→          }, 1500);
+   204→        }
+   205→      } else {
+   206→        const data = await res.json();
+   207→        toast.error(data.error || "Failed to send message");
+   208→      }
+   209→    } catch {
+   210→      toast.error("Failed to send message");
+   211→    } finally {
+   212→      setSubmitting(false);
+   213→    }
+   214→  };
+   215→
+   216→  const handleVisitSubmit = async (e: React.FormEvent) => {
+   217→    e.preventDefault();
+   218→    if (!property) return;
+   219→    setSubmitting(true);
+   220→    try {
+   221→      const res = await fetch("/api/visits", {
+   222→        method: "POST",
+   223→        headers: { "Content-Type": "application/json" },
+   224→        body: JSON.stringify({
+   225→          ...visitForm,
+   226→          propertyId: property.id,
+   227→          agentId: property.agent.id,
+   228→        }),
+   229→      });
+   230→      if (res.ok) {
+   231→        toast.success("Visit scheduled successfully!");
+   232→        setVisitForm({
+   233→          visitorName: "",
+   234→          visitorEmail: "",
+   235→          visitorPhone: "",
+   236→          visitDate: "",
+   237→          notes: "",
+   238→        });
+   239→      } else {
+   240→        const data = await res.json();
+   241→        toast.error(data.error || "Failed to schedule visit");
+   242→      }
+   243→    } catch {
+   244→      toast.error("Failed to schedule visit");
+   245→    } finally {
+   246→      setSubmitting(false);
+   247→    }
+   248→  };
+   249→
+   250→  if (loading) {
+   251→    return (
+   252→      <div className="flex min-h-screen flex-col">
+   253→        <Navbar />
+   254→        <main className="flex-1 container mx-auto px-4 py-8">
+   255→          <Skeleton className="aspect-[21/9] w-full rounded-xl mb-8" />
+   256→          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+   257→            <div className="lg:col-span-2 space-y-4">
+   258→              <Skeleton className="h-10 w-3/4" />
+   259→              <Skeleton className="h-6 w-1/2" />
+   260→              <Skeleton className="h-40 w-full" />
+   261→            </div>
+   262→            <div className="space-y-4">
+   263→              <Skeleton className="h-60 w-full" />
+   264→              <Skeleton className="h-60 w-full" />
+   265→            </div>
+   266→          </div>
+   267→        </main>
+   268→        <Footer />
+   269→      </div>
+   270→    );
+   271→  }
+   272→
+   273→  if (!property) {
+   274→    return (
+   275→      <div className="flex min-h-screen flex-col">
+   276→        <Navbar />
+   277→        <main className="flex-1 flex items-center justify-center">
+   278→          <div className="text-center">
+   279→            <Building2 className="mx-auto mb-4 h-16 w-16 text-muted-foreground/40" />
+   280→            <h2 className="mb-2 text-2xl font-bold">Property Not Found</h2>
+   281→            <p className="text-muted-foreground mb-4">
+   282→              The property you&apos;re looking for doesn&apos;t exist.
+   283→            </p>
+   284→            <Button asChild>
+   285→              <Link href="/properties">Browse Properties</Link>
+   286→            </Button>
+   287→          </div>
+   288→        </main>
+   289→        <Footer />
+   290→      </div>
+   291→    );
+   292→  }
+   293→
+   294→  return (
+   295→    <div className="flex min-h-screen flex-col">
+   296→      <Navbar />
+   297→      <main className="flex-1">
+   298→        {/* Image Gallery */}
+   299→        <div className="relative aspect-[21/9] w-full overflow-hidden bg-muted">
+   300→          {images.length > 0 ? (
+   301→            <>
+   302→              <Image
+   303→                src={images[currentImage]}
+   304→                alt={property.title}
+   305→                fill
+   306→                className="object-cover"
+   307→                sizes="100vw"
+   308→                priority
+   309→              />
+   310→              {images.length > 1 && (
+   311→                <>
+   312→                  <Button
+   313→                    variant="secondary"
+   314→                    size="icon"
+   315→                    className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full"
+   316→                    onClick={() =>
+   317→                      setCurrentImage((prev) =>
+   318→                        prev === 0 ? images.length - 1 : prev - 1
+   319→                      )
+   320→                    }
+   321→                  >
+   322→                    <ChevronLeft className="h-5 w-5" />
+   323→                  </Button>
+   324→                  <Button
+   325→                    variant="secondary"
+   326→                    size="icon"
+   327→                    className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full"
+   328→                    onClick={() =>
+   329→                      setCurrentImage((prev) =>
+   330→                        prev === images.length - 1 ? 0 : prev + 1
+   331→                      )
+   332→                    }
+   333→                  >
+   334→                    <ChevronRight className="h-5 w-5" />
+   335→                  </Button>
+   336→                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+   337→                    {images.map((_, i) => (
+   338→                      <button
+   339→                        key={i}
+   340→                        onClick={() => setCurrentImage(i)}
+   341→                        className={`h-2 rounded-full transition-all ${
+   342→                          i === currentImage
+   343→                            ? "w-8 bg-white"
+   344→                            : "w-2 bg-white/60"
+   345→                        }`}
+   346→                      />
+   347→                    ))}
+   348→                  </div>
+   349→                </>
+   350→              )}
+   351→            </>
+   352→          ) : (
+   353→            <div className="flex items-center justify-center h-full">
+   354→              <Building2 className="h-20 w-20 text-muted-foreground/30" />
+   355→            </div>
+   356→          )}
+   357→        </div>
+   358→
+   359→        {/* Thumbnail Strip */}
+   360→        {images.length > 1 && (
+   361→          <div className="container mx-auto px-4 py-3">
+   362→            <div className="flex gap-2 overflow-x-auto">
+   363→              {images.map((img, i) => (
+   364→                <button
+   365→                  key={i}
+   366→                  onClick={() => setCurrentImage(i)}
+   367→                  className={`relative shrink-0 h-16 w-24 rounded-md overflow-hidden border-2 transition-all ${
+   368→                    i === currentImage
+   369→                      ? "border-primary"
+   370→                      : "border-transparent opacity-70 hover:opacity-100"
+   371→                  }`}
+   372→                >
+   373→                  <Image
+   374→                    src={img}
+   375→                    alt={`${property.title} ${i + 1}`}
+   376→                    fill
+   377→                    className="object-cover"
+   378→                    sizes="96px"
+   379→                  />
+   380→                </button>
+   381→              ))}
+   382→            </div>
+   383→          </div>
+   384→        )}
+   385→
+   386→        <div className="container mx-auto px-4 py-8">
+   387→          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+   388→            {/* Left Column - Property Details */}
+   389→            <div className="lg:col-span-2 space-y-6">
+   390→              <div>
+   391→                <div className="flex flex-wrap items-center gap-2 mb-3">
+   392→                  <Badge>{getListingTypeLabel(property.listingType)}</Badge>
+   393→                  <Badge variant="outline">
+   394→                    {getPropertyTypeLabel(property.type)}
+   395→                  </Badge>
+   396→                  <Badge
+   397→                    variant={
+   398→                      property.status === "AVAILABLE" ? "default" : "secondary"
+   399→                    }
+   400→                  >
+   401→                    {getStatusLabel(property.status)}
+   402→                  </Badge>
+   403→                  {property.featured && (
+   404→                    <Badge className="bg-accent text-accent-foreground">
+   405→                      Featured
+   406→                    </Badge>
+   407→                  )}
+   408→                </div>
+   409→                <h1 className="mb-2 text-3xl font-bold">{property.title}</h1>
+   410→                <p className="flex items-center gap-1 text-muted-foreground">
+   411→                  <MapPin className="h-4 w-4" />
+   412→                  {property.location}, {property.city}, {property.country}
+   413→                </p>
+   414→                <div className="mt-3 flex items-center gap-4">
+   415→                  <p className="text-3xl font-bold text-primary">
+   416→                    {formatPrice(property.price, property.currency)}
+   417→                  </p>
+   418→                  {property.listingType === "RENT" && (
+   419→                    <span className="text-muted-foreground">{getPriceDurationLabel(property.priceDuration)}</span>
+   420→                  )}
+   421→                </div>
+   422→                <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+   423→                  <Eye className="h-4 w-4" />
+   424→                  {property.views} views
+   425→                </div>
+   426→              </div>
+   427→
+   428→              <Separator />
+   429→
+   430→              {/* Key Features */}
+   431→              <div>
+   432→                <h2 className="mb-4 text-xl font-semibold">Key Features</h2>
+   433→                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+   434→                  {property.bedrooms !== null && (
+   435→                    <div className="flex items-center gap-2 rounded-lg border p-3">
+   436→                      <Bed className="h-5 w-5 text-primary" />
+   437→                      <div>
+   438→                        <p className="text-lg font-semibold">
+   439→                          {property.bedrooms}
+   440→                        </p>
+   441→                        <p className="text-xs text-muted-foreground">
+   442→                          Bedrooms
+   443→                        </p>
+   444→                      </div>
+   445→                    </div>
+   446→                  )}
+   447→                  {property.bathrooms !== null && (
+   448→                    <div className="flex items-center gap-2 rounded-lg border p-3">
+   449→                      <Bath className="h-5 w-5 text-primary" />
+   450→                      <div>
+   451→                        <p className="text-lg font-semibold">
+   452→                          {property.bathrooms}
+   453→                        </p>
+   454→                        <p className="text-xs text-muted-foreground">
+   455→                          Bathrooms
+   456→                        </p>
+   457→                      </div>
+   458→                    </div>
+   459→                  )}
+   460→                  {property.area !== null && (
+   461→                    <div className="flex items-center gap-2 rounded-lg border p-3">
+   462→                      <Maximize className="h-5 w-5 text-primary" />
+   463→                      <div>
+   464→                        <p className="text-lg font-semibold">
+   465→                          {formatArea(property.area)}
+   466→                        </p>
+   467→                        <p className="text-xs text-muted-foreground">Area</p>
+   468→                      </div>
+   469→                    </div>
+   470→                  )}
+   471→                  <div className="flex items-center gap-2 rounded-lg border p-3">
+   472→                    <Car className="h-5 w-5 text-primary" />
+   473→                    <div>
+   474→                      <p className="text-lg font-semibold">
+   475→                        {property.parking ? "Yes" : "No"}
+   476→                      </p>
+   477→                      <p className="text-xs text-muted-foreground">Parking</p>
+   478→                    </div>
+   479→                  </div>
+   480→                  <div className="flex items-center gap-2 rounded-lg border p-3">
+   481→                    <Waves className="h-5 w-5 text-primary" />
+   482→                    <div>
+   483→                      <p className="text-lg font-semibold">
+   484→                        {property.pool ? "Yes" : "No"}
+   485→                      </p>
+   486→                      <p className="text-xs text-muted-foreground">Pool</p>
+   487→                    </div>
+   488→                  </div>
+   489→                  <div className="flex items-center gap-2 rounded-lg border p-3">
+   490→                    <Dumbbell className="h-5 w-5 text-primary" />
+   491→                    <div>
+   492→                      <p className="text-lg font-semibold">
+   493→                        {property.gym ? "Yes" : "No"}
+   494→                      </p>
+   495→                      <p className="text-xs text-muted-foreground">Gym</p>
+   496→                    </div>
+   497→                  </div>
+   498→                  <div className="flex items-center gap-2 rounded-lg border p-3">
+   499→                    <Sofa className="h-5 w-5 text-primary" />
+   500→                    <div>
+   501→                      <p className="text-lg font-semibold">
+   502→                        {property.furnished ? "Yes" : "No"}
+   503→                      </p>
+   504→                      <p className="text-xs text-muted-foreground">Furnished</p>
+   505→                    </div>
+   506→                  </div>
+   507→                </div>
+   508→              </div>
+   509→
+   510→              <Separator />
+   511→
+   512→              {/* Description */}
+   513→              <div>
+   514→                <h2 className="mb-4 text-xl font-semibold">Description</h2>
+   515→                <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+   516→                  {property.description}
+   517→                </p>
+   518→              </div>
+   519→
+   520→              {/* Videos */}
+   521→              {videos.length > 0 && (
+   522→                <>
+   523→                  <Separator />
+   524→                  <div>
+   525→                    <h2 className="mb-4 text-xl font-semibold flex items-center gap-2">
+   526→                      <Video className="h-5 w-5" />
+   527→                      Video Tour
+   528→                    </h2>
+   529→                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   530→                      {videos.map((videoUrl, i) => (
+   531→                        <div key={i} className="rounded-xl overflow-hidden border bg-muted">
+   532→                          <video
+   533→                            src={videoUrl}
+   534→                            controls
+   535→                            preload="metadata"
+   536→                            className="w-full aspect-video object-cover"
+   537→                          >
+   538→                            Your browser does not support the video tag.
+   539→                          </video>
+   540→                        </div>
+   541→                      ))}
+   542→                    </div>
+   543→                  </div>
+   544→                </>
+   545→              )}
+   546→
+   547→              <Separator />
+   548→
+   549→              {/* Contact Form */}
+   550→              <Card>
+   551→                <CardHeader>
+   552→                  <CardTitle className="flex items-center gap-2">
+   553→                    <Send className="h-5 w-5" />
+   554→                    Contact Agent
+   555→                  </CardTitle>
+   556→                </CardHeader>
+   557→                <CardContent>
+   558→                  <form onSubmit={handleContactSubmit} className="space-y-4">
+   559→                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   560→                      <div>
+   561→                        <Label htmlFor="senderName">Full Name</Label>
+   562→                        <Input
+   563→                          id="senderName"
+   564→                          required
+   565→                          value={contactForm.senderName}
+   566→                          onChange={(e) =>
+   567→                            setContactForm((prev) => ({
+   568→                              ...prev,
+   569→                              senderName: e.target.value,
+   570→                            }))
+   571→                          }
+   572→                        />
+   573→                      </div>
+   574→                      <div>
+   575→                        <Label htmlFor="senderEmail">Email</Label>
+   576→                        <Input
+   577→                          id="senderEmail"
+   578→                          type="email"
+   579→                          required
+   580→                          value={contactForm.senderEmail}
+   581→                          onChange={(e) =>
+   582→                            setContactForm((prev) => ({
+   583→                              ...prev,
+   584→                              senderEmail: e.target.value,
+   585→                            }))
+   586→                          }
+   587→                        />
+   588→                      </div>
+   589→                    </div>
+   590→                    <div>
+   591→                      <Label htmlFor="senderPhone">Phone (Optional)</Label>
+   592→                      <Input
+   593→                        id="senderPhone"
+   594→                        value={contactForm.senderPhone}
+   595→                        onChange={(e) =>
+   596→                          setContactForm((prev) => ({
+   597→                            ...prev,
+   598→                            senderPhone: e.target.value,
+   599→                          }))
+   600→                        }
+   601→                      />
+   602→                    </div>
+   603→                    <div>
+   604→                      <Label htmlFor="subject">Subject</Label>
+   605→                      <Input
+   606→                        id="subject"
+   607→                        required
+   608→                        value={contactForm.subject}
+   609→                        onChange={(e) =>
+   610→                          setContactForm((prev) => ({
+   611→                            ...prev,
+   612→                            subject: e.target.value,
+   613→                          }))
+   614→                        }
+   615→                      />
+   616→                    </div>
+   617→                    <div>
+   618→                      <Label htmlFor="body">Message</Label>
+   619→                      <Textarea
+   620→                        id="body"
+   621→                        required
+   622→                        rows={4}
+   623→                        value={contactForm.body}
+   624→                        onChange={(e) =>
+   625→                          setContactForm((prev) => ({
+   626→                            ...prev,
+   627→                            body: e.target.value,
+   628→                          }))
+   629→                        }
+   630→                        placeholder="I'm interested in this property..."
+   631→                      />
+   632→                    </div>
+   633→                    <Button type="submit" className="w-full" disabled={submitting}>
+   634→                      {submitting ? "Sending..." : "Send Message"}
+   635→                    </Button>
+   636→                  </form>
+   637→                </CardContent>
+   638→              </Card>
+   639→            </div>
+   640→
+   641→            {/* Right Column - Agent & Visit Schedule */}
+   642→            <div className="space-y-6">
+   643→              {/* Agent Info */}
+   644→              <Card>
+   645→                <CardHeader>
+   646→                  <CardTitle className="text-lg">Listed By</CardTitle>
+   647→                </CardHeader>
+   648→                <CardContent>
+   649→                  <div className="flex items-center gap-3 mb-4">
+   650→                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-lg">
+   651→                      {property.agent.name
+   652→                        .split(" ")
+   653→                        .map((n) => n[0])
+   654→                        .join("")}
+   655→                    </div>
+   656→                    <div>
+   657→                      <p className="font-semibold">{property.agent.name}</p>
+   658→                      <p className="text-sm text-muted-foreground">
+   659→                        {property.agent.company}
+   660→                      </p>
+   661→                    </div>
+   662→                  </div>
+   663→                  {property.agent.license && (
+   664→                    <p className="mb-3 text-xs text-muted-foreground">
+   665→                      License: {property.agent.license}
+   666→                    </p>
+   667→                  )}
+   668→                  {property.agent.bio && (
+   669→                    <p className="mb-4 text-sm text-muted-foreground">
+   670→                      {property.agent.bio}
+   671→                    </p>
+   672→                  )}
+   673→                  <div className="space-y-2">
+   674→                    <a
+   675→                      href={`tel:${property.agent.phone}`}
+   676→                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"
+   677→                    >
+   678→                      <Phone className="h-4 w-4" />
+   679→                      {property.agent.phone}
+   680→                    </a>
+   681→                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+   682→                      <Mail className="h-4 w-4" />
+   683→                      <span>Use the form below to message {property.agent.name.split(" ")[0]}</span>
+   684→                    </div>
+   685→                  </div>
+   686→                </CardContent>
+   687→              </Card>
+   688→
+   689→              {/* Visit Schedule */}
+   690→              <Card>
+   691→                <CardHeader>
+   692→                  <CardTitle className="flex items-center gap-2 text-lg">
+   693→                    <CalendarDays className="h-5 w-5" />
+   694→                    Schedule a Visit
+   695→                  </CardTitle>
+   696→                </CardHeader>
+   697→                <CardContent>
+   698→                  <form onSubmit={handleVisitSubmit} className="space-y-4">
+   699→                    <div>
+   700→                      <Label htmlFor="visitorName">Full Name</Label>
+   701→                      <Input
+   702→                        id="visitorName"
+   703→                        required
+   704→                        value={visitForm.visitorName}
+   705→                        onChange={(e) =>
+   706→                          setVisitForm((prev) => ({
+   707→                            ...prev,
+   708→                            visitorName: e.target.value,
+   709→                          }))
+   710→                        }
+   711→                      />
+   712→                    </div>
+   713→                    <div>
+   714→                      <Label htmlFor="visitorEmail">Email</Label>
+   715→                      <Input
+   716→                        id="visitorEmail"
+   717→                        type="email"
+   718→                        required
+   719→                        value={visitForm.visitorEmail}
+   720→                        onChange={(e) =>
+   721→                          setVisitForm((prev) => ({
+   722→                            ...prev,
+   723→                            visitorEmail: e.target.value,
+   724→                          }))
+   725→                        }
+   726→                      />
+   727→                    </div>
+   728→                    <div>
+   729→                      <Label htmlFor="visitorPhone">Phone</Label>
+   730→                      <Input
+   731→                        id="visitorPhone"
+   732→                        required
+   733→                        value={visitForm.visitorPhone}
+   734→                        onChange={(e) =>
+   735→                          setVisitForm((prev) => ({
+   736→                            ...prev,
+   737→                            visitorPhone: e.target.value,
+   738→                          }))
+   739→                        }
+   740→                      />
+   741→                    </div>
+   742→                    <div>
+   743→                      <Label htmlFor="visitDate">Preferred Date & Time</Label>
+   744→                      <Input
+   745→                        id="visitDate"
+   746→                        type="datetime-local"
+   747→                        required
+   748→                        value={visitForm.visitDate}
+   749→                        onChange={(e) =>
+   750→                          setVisitForm((prev) => ({
+   751→                            ...prev,
+   752→                            visitDate: e.target.value,
+   753→                          }))
+   754→                        }
+   755→                      />
+   756→                    </div>
+   757→                    <div>
+   758→                      <Label htmlFor="notes">Notes (Optional)</Label>
+   759→                      <Textarea
+   760→                        id="notes"
+   761→                        rows={3}
+   762→                        value={visitForm.notes}
+   763→                        onChange={(e) =>
+   764→                          setVisitForm((prev) => ({
+   765→                            ...prev,
+   766→                            notes: e.target.value,
+   767→                          }))
+   768→                        }
+   769→                        placeholder="Any special requests..."
+   770→                      />
+   771→                    </div>
+   772→                    <Button
+   773→                      type="submit"
+   774→                      className="w-full"
+   775→                      disabled={submitting}
+   776→                    >
+   777→                      {submitting ? "Scheduling..." : "Schedule Visit"}
+   778→                    </Button>
+   779→                  </form>
+   780→                </CardContent>
+   781→              </Card>
+   782→            </div>
+   783→          </div>
+   784→
+   785→          {/* Similar Properties */}
+   786→          {similar.length > 0 && (
+   787→            <section className="mt-16">
+   788→              <Separator className="mb-8" />
+   789→              <h2 className="mb-6 text-2xl font-bold">Similar Properties</h2>
+   790→              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+   791→                {similar.map((p) => (
+   792→                  <PropertyCard key={p.id} {...p} />
+   793→                ))}
+   794→              </div>
+   795→            </section>
+   796→          )}
+   797→        </div>
+   798→      </main>
+   799→      <Footer />
+   800→    </div>
+   801→  );
+   802→}
+   803→
