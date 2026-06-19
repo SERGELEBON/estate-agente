@@ -30,7 +30,7 @@ const visitFormSchema = z.object({
   visitorName: z.string().min(2, "Name must be at least 2 characters"),
   visitorEmail: z.string().email("Please enter a valid email address"),
   visitorPhone: z.string().min(1, "Phone number is required"),
-  visitDate: z.date({ required_error: "Please select a date" }),
+  visitDate: z.date(),
   notes: z.string().optional(),
 });
 
