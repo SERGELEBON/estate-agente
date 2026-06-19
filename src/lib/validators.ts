@@ -5,15 +5,13 @@ export const propertySchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   slug: z.string().min(3, "Slug must be at least 3 characters").optional(),
   description: z.string().min(10, "Description must be at least 10 characters"),
-  price: z.number({ required_error: "Price is required" }).positive("Price must be positive"),
+  price: z.number().positive("Price must be positive"),
   currency: z.string().default("GHC"),
   location: z.string().min(2, "Location is required"),
   city: z.string().default("Accra"),
   region: z.string().default("Greater Accra"),
   country: z.string().default("Ghana"),
-  type: z.enum(["APARTMENT", "HOUSE", "VILLA", "LAND", "COMMERCIAL", "OFFICE", "HOTEL", "HOSTEL"], {
-    required_error: "Property type is required",
-  }),
+  type: z.enum(["APARTMENT", "HOUSE", "VILLA", "LAND", "COMMERCIAL", "OFFICE", "HOTEL", "HOSTEL"]),
   status: z.enum(["AVAILABLE", "SOLD", "RENTED", "RESERVED"]).default("AVAILABLE"),
   listingType: z.enum(["SALE", "RENT"]).default("SALE"),
   priceDuration: z.enum(["DAY", "MONTH", "YEAR"]).default("MONTH"),
@@ -46,24 +44,24 @@ export const messageSchema = z.object({
 // ─── Conversation Schema (new internal messaging) ───────────
 export const conversationCreateSchema = z.object({
   visitorName: z
-    .string({ error: "Your name is required" })
+    .string()
     .min(2, "Your name must be at least 2 characters"),
   visitorEmail: z
-    .string({ error: "Your email is required" })
+    .string()
     .email("Please enter a valid email address"),
   visitorPhone: z.string().optional(),
   subject: z
-    .string({ error: "Subject is required" })
+    .string()
     .min(3, "Subject must be at least 3 characters"),
   body: z
-    .string({ error: "Your message is required" })
+    .string()
     .min(5, "Your message must be at least 5 characters")
     .max(5000, "Your message is too long (max 5000 characters)"),
   propertyId: z
-    .string({ error: "Property is required" })
+    .string()
     .min(1, "Property is required"),
   agentId: z
-    .string({ error: "Agent is required" })
+    .string()
     .min(1, "Agent is required"),
 });
 
