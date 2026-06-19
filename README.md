@@ -153,3 +153,4 @@ bun run start
 ## Licence
 
 Propriétaire - Tous droits réservés
+# Data seeded successfully
