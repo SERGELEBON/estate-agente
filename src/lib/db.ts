@@ -10,6 +10,6 @@ export const db =
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   })
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = db
-}
+// Always cache the Prisma Client globally, even in production
+// This prevents creating multiple instances in serverless functions
+globalForPrisma.prisma = db
