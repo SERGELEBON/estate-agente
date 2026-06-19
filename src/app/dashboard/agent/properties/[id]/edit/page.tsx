@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function EditAgentPropertyPage() {
   const { userId } = useAuth();
   const params = useParams();
-  const id = params.id as string;
+  const id = params?.id as string;
   const [property, setProperty] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 

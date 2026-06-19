@@ -86,7 +86,7 @@ interface Property {
 
 export default function PropertyDetailPage() {
   const params = useParams();
-  const id = params.id as string;
+  const id = params?.id as string;
   const [property, setProperty] = useState<Property | null>(null);
   const [similar, setSimilar] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
