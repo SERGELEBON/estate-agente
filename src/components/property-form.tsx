@@ -40,6 +40,8 @@ interface PropertyFormProps {
   agents?: Agent[];
   agentId?: string;
   redirectPath: string;
+  property?: any;
+  onSubmit?: (data: any) => Promise<void>;
 }
 
 interface MediaItem {
