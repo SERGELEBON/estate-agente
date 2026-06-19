@@ -56,25 +56,25 @@ export function PropertyFilters() {
 
   // Read current filter values from URL
   const [location, setLocation] = useState(
-    searchParams.get("location") ?? ""
+    searchParams?.get("location") ?? ""
   );
   const [type, setType] = useState(
-    searchParams.get("type") ?? "ALL"
+    searchParams?.get("type") ?? "ALL"
   );
   const [listingType, setListingType] = useState(
-    searchParams.get("listingType") ?? "ALL"
+    searchParams?.get("listingType") ?? "ALL"
   );
   const [minPrice, setMinPrice] = useState(
-    searchParams.get("minPrice") ?? ""
+    searchParams?.get("minPrice") ?? ""
   );
   const [maxPrice, setMaxPrice] = useState(
-    searchParams.get("maxPrice") ?? ""
+    searchParams?.get("maxPrice") ?? ""
   );
   const [bedrooms, setBedrooms] = useState(
-    searchParams.get("bedrooms") ?? "any"
+    searchParams?.get("bedrooms") ?? "any"
   );
   const [bathrooms, setBathrooms] = useState(
-    searchParams.get("bathrooms") ?? "any"
+    searchParams?.get("bathrooms") ?? "any"
   );
 
   const applyFilters = () => {

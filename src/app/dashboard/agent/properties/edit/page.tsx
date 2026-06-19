@@ -44,7 +44,7 @@ interface MediaItem {
 export default function EditPropertyPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const propertyId = searchParams.get("id");
+  const propertyId = searchParams?.get("id");
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
