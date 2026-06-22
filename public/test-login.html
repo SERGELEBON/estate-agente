@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Login - State-ImmoCom</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2E8B57;
+            margin-top: 0;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #2E8B57;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #1a5c38;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test de Connexion</h1>
+        <p>Test direct sans NextAuth React</p>
+
+        <form id="loginForm">
+            <input
+                type="email"
+                id="email"
+                placeholder="Email"
+                value="admin@state-immocom.com"
+                required
+            />
+            <input
+                type="password"
+                id="password"
+                placeholder="Password"
+                value="Admin@2024"
+                required
+            />
+            <button type="submit" id="submitBtn">
+                Se connecter
+            </button>
+        </form>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const resultDiv = document.getElementById('result');
+        const submitBtn = document.getElementById('submitBtn');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            resultDiv.innerHTML = '<div class="info">🔄 Test en cours...</div>';
+            submitBtn.disabled = true;
+
+            try {
+                console.log('[TestLogin] Starting test...');
+
+                // Étape 1: Get CSRF token
+                console.log('[TestLogin] Step 1: Getting CSRF token');
+                const csrfRes = await fetch('/api/auth/csrf');
+                const csrfData = await csrfRes.json();
+                console.log('[TestLogin] CSRF:', csrfData.csrfToken.substring(0, 20) + '...');
+
+                // Étape 2: Login
+                console.log('[TestLogin] Step 2: Attempting login');
+                const formData = new URLSearchParams({
+                    email,
+                    password,
+                    csrfToken: csrfData.csrfToken,
+                    callbackUrl: '/dashboard',
+                    json: 'true'
+                });
+
+                const loginRes = await fetch('/api/auth/callback/credentials', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: formData.toString(),
+                    credentials: 'include'
+                });
+
+                console.log('[TestLogin] Login status:', loginRes.status);
+                const loginData = await loginRes.json();
+                console.log('[TestLogin] Login response:', loginData);
+
+                // Étape 3: Check session
+                console.log('[TestLogin] Step 3: Checking session');
+                const sessionRes = await fetch('/api/auth/session', {
+                    credentials: 'include'
+                });
+                const session = await sessionRes.json();
+                console.log('[TestLogin] Session:', session);
+
+                if (session && session.user) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            ✅ CONNEXION RÉUSSIE!<br><br>
+                            Email: ${session.user.email}<br>
+                            Role: ${session.user.role}<br>
+                            ID: ${session.user.id}<br><br>
+                            <a href="/dashboard/${session.user.role.toLowerCase()}">
+                                → Aller au dashboard
+                            </a>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            ❌ ÉCHEC<br><br>
+                            Login response: ${JSON.stringify(loginData, null, 2)}<br><br>
+                            Session: ${JSON.stringify(session, null, 2)}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('[TestLogin] Error:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        💥 ERREUR<br><br>
+                        ${error.message}<br><br>
+                        ${error.stack}
+                    </div>
+                `;
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
