@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import { existsSync } from "fs";
+import { v2 as cloudinary } from "cloudinary";
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 /**
  * Upload endpoint for images and videos
- * Stores files in public/uploads directory
+ * Uses Cloudinary for serverless-compatible storage
  */
 export async function POST(request: NextRequest) {
   try {
@@ -19,7 +23,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file type
     const allowedTypes = [
       "image/jpeg",
       "image/jpg",
@@ -38,8 +41,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file size (max 50MB)
-    const maxSize = 50 * 1024 * 1024; // 50MB
+    const maxSize = 50 * 1024 * 1024;
     if (file.size > maxSize) {
       return NextResponse.json(
         { error: "File too large. Max size is 50MB" },
@@ -47,36 +49,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), "public", "uploads");
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true });
-    }
-
-    // Generate unique filename
-    const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(7);
-    const extension = file.name.split(".").pop();
-    const filename = `${timestamp}-${randomString}.${extension}`;
-
-    // Convert file to buffer and save
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const filepath = join(uploadsDir, filename);
 
-    await writeFile(filepath, buffer);
+    const resourceType = file.type.startsWith("video/") ? "video" : "image";
 
-    // Return the public URL
-    const url = `/uploads/${filename}`;
+    const result = await new Promise<any>((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          resource_type: resourceType,
+          folder: "state-immocom",
+          transformation: resourceType === "image"
+            ? [{ width: 1920, height: 1080, crop: "limit", quality: "auto" }]
+            : undefined,
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
 
-    console.log(`[Upload] File uploaded: ${filename} (${file.size} bytes)`);
+      uploadStream.end(buffer);
+    });
+
+    console.log(`[Upload] ${resourceType} uploaded:`, result.public_id);
 
     return NextResponse.json({
       success: true,
-      url,
-      filename,
+      url: result.secure_url,
+      publicId: result.public_id,
       size: file.size,
       type: file.type,
+      width: result.width,
+      height: result.height,
     });
   } catch (error: any) {
     console.error("[Upload] Error:", error);

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Automatic Redirect - State-ImmoCom</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2E8B57;
+            margin-top: 0;
+        }
+        .status {
+            margin: 15px 0;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .pending {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #2E8B57;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 15px;
+        }
+        button:hover {
+            background: #1a5c38;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .timer {
+            text-align: center;
+            font-size: 48px;
+            font-weight: bold;
+            color: #2E8B57;
+            margin: 20px 0;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Redirection Automatique</h1>
+        <p>Ce test vérifie que la redirection se fait automatiquement après connexion réussie</p>
+
+        <div id="status"></div>
+        <div id="timer" class="timer"></div>
+
+        <button id="startTest" onclick="runTest()">
+            Démarrer le test
+        </button>
+
+        <div id="details" style="margin-top: 20px; font-size: 12px; color: #666;"></div>
+    </div>
+
+    <script>
+        let redirectTimer = null;
+        let startTime = null;
+
+        async function runTest() {
+            const statusDiv = document.getElementById('status');
+            const timerDiv = document.getElementById('timer');
+            const detailsDiv = document.getElementById('details');
+            const button = document.getElementById('startTest');
+
+            button.disabled = true;
+            statusDiv.innerHTML = '';
+            timerDiv.innerHTML = '';
+            detailsDiv.innerHTML = '';
+
+            try {
+                // Step 1: Get CSRF
+                addStatus('🔄 Étape 1/4: Obtention du token CSRF...', 'pending');
+                const csrfRes = await fetch('/api/auth/csrf');
+                const csrfData = await csrfRes.json();
+                addStatus('✅ Token CSRF obtenu', 'success');
+
+                // Step 2: Login
+                addStatus('🔄 Étape 2/4: Connexion avec admin@state-immocom.com...', 'pending');
+                const formData = new URLSearchParams({
+                    email: 'admin@state-immocom.com',
+                    password: 'Admin@2024',
+                    csrfToken: csrfData.csrfToken,
+                    callbackUrl: '/dashboard',
+                    json: 'true'
+                });
+
+                const loginRes = await fetch('/api/auth/callback/credentials', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: formData.toString(),
+                    credentials: 'include'
+                });
+
+                if (!loginRes.ok) {
+                    throw new Error('Échec de la connexion (HTTP ' + loginRes.status + ')');
+                }
+
+                const loginData = await loginRes.json();
+                addStatus('✅ Connexion réussie', 'success');
+                addDetails('Login response: ' + JSON.stringify(loginData, null, 2));
+
+                // Step 3: Verify session
+                addStatus('🔄 Étape 3/4: Vérification de la session...', 'pending');
+                const sessionRes = await fetch('/api/auth/session', {
+                    credentials: 'include'
+                });
+
+                const session = await sessionRes.json();
+
+                if (!session || !session.user) {
+                    throw new Error('Session non créée après connexion');
+                }
+
+                addStatus('✅ Session créée: ' + session.user.email + ' (Role: ' + session.user.role + ')', 'success');
+                addDetails('Session: ' + JSON.stringify(session, null, 2));
+
+                // Step 4: Wait for automatic redirect
+                addStatus('⏱️ Étape 4/4: Test de la redirection automatique...', 'info');
+                addStatus('La page devrait se rediriger automatiquement vers /dashboard/' + session.user.role.toLowerCase() + ' dans quelques secondes...', 'info');
+
+                // Start countdown timer
+                let countdown = 10;
+                startTime = Date.now();
+                redirectTimer = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                    const remaining = Math.max(0, countdown - elapsed);
+                    timerDiv.textContent = remaining + 's';
+
+                    if (remaining === 0) {
+                        clearInterval(redirectTimer);
+                        timerDiv.textContent = '';
+                        addStatus('❌ ÉCHEC: Pas de redirection automatique détectée après 10s', 'error');
+                        addStatus('La page aurait dû se rediriger automatiquement. Si vous voyez ce message, la redirection automatique ne fonctionne pas.', 'error');
+                        button.disabled = false;
+                    }
+                }, 100);
+
+                // Monitor for page unload (redirect happening)
+                window.addEventListener('beforeunload', function() {
+                    clearInterval(redirectTimer);
+                    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                    console.log('✅ SUCCESS: Redirect detected after ' + elapsed + 's');
+                });
+
+            } catch (error) {
+                clearInterval(redirectTimer);
+                timerDiv.textContent = '';
+                addStatus('❌ Erreur: ' + error.message, 'error');
+                addDetails('Stack: ' + error.stack);
+                button.disabled = false;
+            }
+        }
+
+        function addStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            const div = document.createElement('div');
+            div.className = 'status ' + type;
+            div.textContent = message;
+            statusDiv.appendChild(div);
+        }
+
+        function addDetails(message) {
+            const detailsDiv = document.getElementById('details');
+            const pre = document.createElement('pre');
+            pre.style.cssText = 'background: #f4f4f4; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 11px;';
+            pre.textContent = message;
+            detailsDiv.appendChild(pre);
+        }
+    </script>
+</body>
+</html>
