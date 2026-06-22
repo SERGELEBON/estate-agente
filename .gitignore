@@ -44,3 +44,5 @@ server.log
 # PM2
 ecosystem.config.cjs
 .vercel
+/public/uploads/*
+!public/uploads/.gitkeep
