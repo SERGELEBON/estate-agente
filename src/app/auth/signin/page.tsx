@@ -63,59 +63,73 @@ function SignInForm() {
     setLoading(true);
 
     try {
-      console.log("[SignIn] Attempting login for:", email);
-      console.log("[SignIn] Current location:", window.location.href);
+      console.log("[SignIn] Attempting manual login for:", email);
 
-      const result = await signIn("credentials", {
+      // Step 1: Get CSRF token
+      const csrfRes = await fetch("/api/auth/csrf");
+      const csrfData = await csrfRes.json();
+      console.log("[SignIn] CSRF token obtained");
+
+      // Step 2: Manual login via NextAuth credentials endpoint
+      const formData = new URLSearchParams({
         email,
         password,
-        redirect: false,
+        csrfToken: csrfData.csrfToken,
         callbackUrl: "/dashboard",
+        json: "true",
       });
 
-      console.log("[SignIn] SignIn result FULL:", JSON.stringify(result, null, 2));
-      console.log("[SignIn] result.ok:", result?.ok);
-      console.log("[SignIn] result.error:", result?.error);
-      console.log("[SignIn] result.status:", result?.status);
-      console.log("[SignIn] result.url:", result?.url);
+      const loginRes = await fetch("/api/auth/callback/credentials", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+        credentials: "include",
+      });
 
-      if (result?.error) {
-        console.error("[SignIn] Error from signIn:", result.error);
-        setError(`Erreur: ${result.error}`);
+      console.log("[SignIn] Login response status:", loginRes.status);
+
+      if (!loginRes.ok) {
+        console.error("[SignIn] Login request failed");
+        setError("La connexion a échoué. Vérifiez vos identifiants.");
         setLoading(false);
         return;
       }
 
-      if (!result?.ok) {
-        console.error("[SignIn] SignIn not ok. Full result:", result);
-        setError(`La connexion a échoué (status: ${result?.status || 'unknown'})`);
+      const loginData = await loginRes.json();
+      console.log("[SignIn] Login response:", loginData);
+
+      // Step 3: Check session
+      const sessionRes = await fetch("/api/auth/session", {
+        credentials: "include",
+      });
+
+      if (!sessionRes.ok) {
+        console.error("[SignIn] Session fetch failed");
+        setError("Impossible de créer la session.");
         setLoading(false);
         return;
       }
 
-      console.log("[SignIn] Login successful, fetching session...");
+      const sessionData = await sessionRes.json();
+      console.log("[SignIn] Session data:", sessionData);
 
-      // After successful login, fetch session to get the role
-      // then redirect directly to the correct dashboard
-      const sessionRes = await fetch("/api/auth/session");
-      console.log("[SignIn] Session response status:", sessionRes.status);
+      if (!sessionData || !sessionData.user) {
+        console.error("[SignIn] No user in session");
+        setError("Email ou mot de passe incorrect.");
+        setLoading(false);
+        return;
+      }
 
-      if (sessionRes.ok) {
-        const sessionData = await sessionRes.json();
-        console.log("[SignIn] Session data:", sessionData);
-        const role = sessionData?.user?.role;
+      // Success! Redirect based on role
+      const role = sessionData.user.role;
+      console.log("[SignIn] Login successful! Role:", role);
 
-        if (role === "ADMIN") {
-          console.log("[SignIn] Redirecting to admin dashboard");
-          router.replace("/dashboard/admin");
-        } else {
-          console.log("[SignIn] Redirecting to agent dashboard");
-          router.replace("/dashboard/agent");
-        }
+      if (role === "ADMIN") {
+        router.push("/dashboard/admin");
       } else {
-        console.log("[SignIn] Session fetch failed, using fallback redirect");
-        // Fallback: redirect to /dashboard which handles role-based routing
-        router.replace("/dashboard");
+        router.push("/dashboard/agent");
       }
     } catch (err) {
       console.error("[SignIn] Exception during login:", err);
