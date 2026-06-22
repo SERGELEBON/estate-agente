@@ -4,7 +4,15 @@ import { SessionProvider, useSession as nextAuthUseSession } from "next-auth/rea
 import { ReactNode } from "react";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  return <SessionProvider>{children}</SessionProvider>;
+  return (
+    <SessionProvider
+      basePath="/api/auth"
+      refetchInterval={0}
+      refetchOnWindowFocus={true}
+    >
+      {children}
+    </SessionProvider>
+  );
 }
 
 export function useAuth() {

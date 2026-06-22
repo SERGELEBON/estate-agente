@@ -49,6 +49,7 @@ function SignInForm() {
 
     try {
       console.log("[SignIn] Attempting login for:", email);
+      console.log("[SignIn] Current location:", window.location.href);
 
       const result = await signIn("credentials", {
         email,
@@ -56,18 +57,22 @@ function SignInForm() {
         redirect: false,
       });
 
-      console.log("[SignIn] SignIn result:", result);
+      console.log("[SignIn] SignIn result FULL:", JSON.stringify(result, null, 2));
+      console.log("[SignIn] result.ok:", result?.ok);
+      console.log("[SignIn] result.error:", result?.error);
+      console.log("[SignIn] result.status:", result?.status);
+      console.log("[SignIn] result.url:", result?.url);
 
       if (result?.error) {
         console.error("[SignIn] Error from signIn:", result.error);
-        setError("Email ou mot de passe incorrect. Veuillez réessayer.");
+        setError(`Erreur: ${result.error}`);
         setLoading(false);
         return;
       }
 
       if (!result?.ok) {
-        console.error("[SignIn] SignIn not ok:", result);
-        setError("La connexion a échoué. Veuillez réessayer.");
+        console.error("[SignIn] SignIn not ok. Full result:", result);
+        setError(`La connexion a échoué (status: ${result?.status || 'unknown'})`);
         setLoading(false);
         return;
       }
