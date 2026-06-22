@@ -46,3 +46,6 @@ ecosystem.config.cjs
 .vercel
 /public/uploads/*
 !public/uploads/.gitkeep
+
+# Cloudinary credentials (NEVER commit these!)
+CLOUDINARY_CREDENTIALS.txt
