@@ -126,10 +126,11 @@ function SignInForm() {
       const role = sessionData.user.role;
       console.log("[SignIn] Login successful! Role:", role);
 
+      // Force a full page reload to ensure SessionProvider updates
       if (role === "ADMIN") {
-        router.push("/dashboard/admin");
+        window.location.href = "/dashboard/admin";
       } else {
-        router.push("/dashboard/agent");
+        window.location.href = "/dashboard/agent";
       }
     } catch (err) {
       console.error("[SignIn] Exception during login:", err);
