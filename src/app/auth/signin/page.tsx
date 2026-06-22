@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { signIn, useSession } from "next-auth/react";
+import { signIn, useSession, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -126,14 +126,14 @@ function SignInForm() {
       const role = sessionData.user.role;
       console.log("[SignIn] Login successful! Role:", role);
 
-      // Small delay to ensure session cookie is properly set
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Force a full page navigation (replace, not push, to prevent back button issues)
       const dashboardUrl = role === "ADMIN" ? "/dashboard/admin" : "/dashboard/agent";
       console.log("[SignIn] Redirecting to:", dashboardUrl);
 
-      window.location.replace(dashboardUrl);
+      // Force NextAuth to refresh the session on the client side
+      await getSession();
+
+      // Use full page reload to ensure session is properly loaded
+      window.location.href = dashboardUrl;
     } catch (err) {
       console.error("[SignIn] Exception during login:", err);
       setError("Une erreur est survenue. Veuillez réessayer.");
