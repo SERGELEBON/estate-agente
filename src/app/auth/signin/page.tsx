@@ -126,12 +126,14 @@ function SignInForm() {
       const role = sessionData.user.role;
       console.log("[SignIn] Login successful! Role:", role);
 
-      // Force a full page reload to ensure SessionProvider updates
-      if (role === "ADMIN") {
-        window.location.href = "/dashboard/admin";
-      } else {
-        window.location.href = "/dashboard/agent";
-      }
+      // Small delay to ensure session cookie is properly set
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Force a full page navigation (replace, not push, to prevent back button issues)
+      const dashboardUrl = role === "ADMIN" ? "/dashboard/admin" : "/dashboard/agent";
+      console.log("[SignIn] Redirecting to:", dashboardUrl);
+
+      window.location.replace(dashboardUrl);
     } catch (err) {
       console.error("[SignIn] Exception during login:", err);
       setError("Une erreur est survenue. Veuillez réessayer.");
