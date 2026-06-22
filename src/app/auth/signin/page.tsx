@@ -23,6 +23,21 @@ function SignInForm() {
   const router = useRouter();
   const { data: session, status } = useSession();
 
+  // Clean up corrupted callbackUrl from redirect loops
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      const callbackUrl = url.searchParams.get("callbackUrl");
+
+      // If callbackUrl points back to signin (redirect loop), remove it
+      if (callbackUrl && callbackUrl.includes("/auth/signin")) {
+        console.log("[SignIn] Removing corrupted callbackUrl:", callbackUrl);
+        url.searchParams.delete("callbackUrl");
+        window.history.replaceState({}, "", url.toString());
+      }
+    }
+  }, []);
+
   // If already authenticated, redirect to the correct dashboard
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
@@ -55,6 +70,7 @@ function SignInForm() {
         email,
         password,
         redirect: false,
+        callbackUrl: "/dashboard",
       });
 
       console.log("[SignIn] SignIn result FULL:", JSON.stringify(result, null, 2));
