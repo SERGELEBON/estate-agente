@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/lib/auth-context";
@@ -224,7 +224,6 @@ export default function DashboardLayout({
 }) {
   const { user, isAuthenticated, isLoading, role } = useAuth();
   const pathname = usePathname();
-  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const redirectAttempted = useRef(false);
@@ -235,33 +234,26 @@ export default function DashboardLayout({
   }, []);
 
   useEffect(() => {
-    // Only redirect after session loading is complete
-    if (isLoading) return;
+    if (!mounted || isLoading) return;
 
-    // If not authenticated after loading completes, redirect to sign-in
-    // Use a ref to prevent multiple redirects
     if (!isAuthenticated) {
       if (!redirectAttempted.current) {
         redirectAttempted.current = true;
-        // Use router.push for client-side navigation to avoid full page reload
-        // and potential race conditions with signOut redirects
-        router.push("/auth/signin");
+        window.location.href = "/auth/signin";
       }
       return;
     }
 
-    // Reset redirect flag when authenticated (e.g. after re-login)
     redirectAttempted.current = false;
 
-    // Role-based route protection: redirect if user accesses wrong dashboard
     if (isAuthenticated && role && pathname) {
       if (role === "ADMIN" && pathname.startsWith("/dashboard/agent")) {
-        router.replace("/dashboard/admin");
+        window.location.href = "/dashboard/admin";
       } else if (role === "AGENT" && pathname.startsWith("/dashboard/admin")) {
-        router.replace("/dashboard/agent");
+        window.location.href = "/dashboard/agent";
       }
     }
-  }, [isLoading, isAuthenticated, role, pathname, router]);
+  }, [mounted, isLoading, isAuthenticated, role, pathname]);
 
   // Prevent hydration mismatch - don't render until mounted on client
   if (!mounted || isLoading) {
