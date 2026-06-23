@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { messagingErrors } from "@/lib/messaging-errors";
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/conversations/visitor?token=xxx
 // Public endpoint — visitor uses their magic token (received after submitting the form) to view their conversation.
 export async function GET(request: NextRequest) {

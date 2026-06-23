@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/notifications — unread counts for the authenticated agent/admin
 // Lightweight endpoint intended for polling (every 30-60s) by the dashboard layout.
 export async function GET(_request: NextRequest) {
