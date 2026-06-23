@@ -226,7 +226,13 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const redirectAttempted = useRef(false);
+
+  // Prevent hydration mismatch by only rendering after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     // Only redirect after session loading is complete
@@ -257,8 +263,8 @@ export default function DashboardLayout({
     }
   }, [isLoading, isAuthenticated, role, pathname, router]);
 
-  // Show loading spinner while session is being fetched
-  if (isLoading) {
+  // Prevent hydration mismatch - don't render until mounted on client
+  if (!mounted || isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="animate-pulse text-center">
