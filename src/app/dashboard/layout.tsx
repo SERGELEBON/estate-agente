@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -225,38 +224,8 @@ export default function DashboardLayout({
   const { user, isAuthenticated, isLoading, role } = useAuth();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const redirectAttempted = useRef(false);
 
-  // Prevent hydration mismatch by only rendering after mount
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted || isLoading) return;
-
-    if (!isAuthenticated) {
-      if (!redirectAttempted.current) {
-        redirectAttempted.current = true;
-        window.location.href = "/auth/signin";
-      }
-      return;
-    }
-
-    redirectAttempted.current = false;
-
-    if (isAuthenticated && role && pathname) {
-      if (role === "ADMIN" && pathname.startsWith("/dashboard/agent")) {
-        window.location.href = "/dashboard/admin";
-      } else if (role === "AGENT" && pathname.startsWith("/dashboard/admin")) {
-        window.location.href = "/dashboard/agent";
-      }
-    }
-  }, [mounted, isLoading, isAuthenticated, role, pathname]);
-
-  // Prevent hydration mismatch - don't render until mounted on client
-  if (!mounted || isLoading) {
+  if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="animate-pulse text-center">
@@ -267,16 +236,8 @@ export default function DashboardLayout({
     );
   }
 
-  // Don't render anything if not authenticated (redirect will happen via useEffect)
-  if (!isAuthenticated) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="animate-pulse text-center">
-          <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/20" />
-          <p className="text-muted-foreground">Redirecting to sign-in...</p>
-        </div>
-      </div>
-    );
+  if (!isAuthenticated || !user) {
+    return null;
   }
 
   const navItems = role === "ADMIN" ? adminNavItems : agentNavItems;
