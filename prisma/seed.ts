@@ -182,8 +182,8 @@ async function main() {
       pool: true,
       gym: true,
       images: JSON.stringify([
-        "https://images.unsplash.com/photo-1600607687644-aac4c3eac7f4?w=800",
-        "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800",
+        "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800",
+        "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800",
       ]),
       featured: true,
       agentId: agents[0].id,
