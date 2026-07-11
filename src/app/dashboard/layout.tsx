@@ -225,6 +225,10 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // IMPORTANT: All hooks must be called before any conditional returns
+  // This hook must be called even during loading/unauthenticated states
+  const { unread } = useNotifications(45000);
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -241,9 +245,6 @@ export default function DashboardLayout({
   }
 
   const navItems = role === "ADMIN" ? adminNavItems : agentNavItems;
-
-  // Shared notifications hook — drives both the bell and the sidebar unread badge
-  const { unread } = useNotifications(45000);
 
   return (
     <div className="flex h-screen overflow-hidden">

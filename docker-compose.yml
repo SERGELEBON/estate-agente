@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: state-immocom-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: state_user
+      POSTGRES_PASSWORD: state_password_dev_2024
+      POSTGRES_DB: state_immocom
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U state_user -d state_immocom"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - state-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  state-network:
+    driver: bridge
