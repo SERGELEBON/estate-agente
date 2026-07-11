@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     const featured = searchParams.get("featured");
     const statusFilter = searchParams.get("status");
     const agentFilter = searchParams.get("agentId");
+    const sort = searchParams.get("sort"); // recent, featured, price-asc, price-desc
     const page = parseInt(searchParams.get("page") ?? "1", 10);
     const limit = parseInt(searchParams.get("limit") ?? "12", 10);
 
@@ -66,6 +67,21 @@ export async function GET(request: NextRequest) {
 
     const skip = (page - 1) * limit;
 
+    // Dynamic orderBy based on sort parameter
+    let orderBy: any = [
+      { featured: "desc" },
+      { createdAt: "desc" },
+    ];
+
+    if (sort === "recent") {
+      // News feed style: most recent first
+      orderBy = [{ createdAt: "desc" }];
+    } else if (sort === "price-asc") {
+      orderBy = [{ price: "asc" }];
+    } else if (sort === "price-desc") {
+      orderBy = [{ price: "desc" }];
+    }
+
     const [properties, total] = await Promise.all([
       db.property.findMany({
         where,
@@ -81,10 +97,7 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        orderBy: [
-          { featured: "desc" },
-          { createdAt: "desc" },
-        ],
+        orderBy,
         skip,
         take: limit,
       }),

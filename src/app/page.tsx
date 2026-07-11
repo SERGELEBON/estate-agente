@@ -104,9 +104,10 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchFeatured() {
+    async function fetchRecentProperties() {
       try {
-        const res = await fetch("/api/properties?featured=true&limit=9");
+        // Fetch most recent properties sorted by creation date (news feed style)
+        const res = await fetch("/api/properties?sort=recent&limit=9");
         if (res.ok) {
           const data = await res.json();
           setProperties(data.properties || []);
@@ -117,7 +118,7 @@ export default function HomePage() {
         setLoading(false);
       }
     }
-    fetchFeatured();
+    fetchRecentProperties();
   }, []);
 
   return (
@@ -126,14 +127,16 @@ export default function HomePage() {
       <main className="flex-1">
         <Hero />
 
-        {/* Featured Properties */}
+        {/* Recent Properties - News Feed Style */}
         <section className="py-16 md:py-20">
           <div className="container mx-auto px-4">
             <div className="mb-10 text-center">
-              <h2 className="mb-3 text-3xl font-bold">Featured Properties</h2>
+              <h2 className="mb-3 text-3xl font-bold flex items-center justify-center gap-2">
+                <Clock className="h-8 w-8 text-primary" />
+                Latest Properties
+              </h2>
               <p className="text-muted-foreground">
-                Handpicked premium properties in Accra&apos;s most desirable
-                neighborhoods
+                Newly added properties - Stay updated with the freshest listings
               </p>
             </div>
             {loading ? (
