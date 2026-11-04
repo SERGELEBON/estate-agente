@@ -137,6 +137,19 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    if (userRole === "AGENT") {
+      const me = await db.user.findUnique({
+        where: { id: (session.user as any).id },
+        select: { agentStatus: true },
+      });
+      if (me?.agentStatus !== "ACTIVE") {
+        return NextResponse.json(
+          { error: "Your agent profile must be verified before you can publish listings.", code: "AGENT_NOT_VERIFIED" },
+          { status: 403 }
+        );
+      }
+      body.agentId = (session.user as any).id; // agents can't publish on behalf of someone else
+    }
     const validatedData = propertySchema.parse(body);
 
     // Generate slug if not provided

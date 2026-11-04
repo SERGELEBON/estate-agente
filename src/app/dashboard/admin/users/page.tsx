@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Trash2, Shield, Plus, Pencil, UserPlus } from "lucide-react";
+import { Search, Trash2, Shield, Plus, Pencil, UserPlus, BadgeCheck, Ban } from "lucide-react";
 import { toast } from "sonner";
 
 interface User {
@@ -39,6 +39,7 @@ interface User {
   name: string | null;
   email: string;
   role: string;
+  agentStatus?: string;
   phone: string | null;
   company: string | null;
   license: string | null;
@@ -246,6 +247,28 @@ export default function AdminUsersPage() {
     }
   };
 
+  const setAgentStatus = async (user: User, agentStatus: "ACTIVE" | "SUSPENDED") => {
+    const res = await fetch(`/api/users/${user.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agentStatus }),
+    });
+    if (res.ok) {
+      toast.success(agentStatus === "ACTIVE" ? `${user.name ?? user.email} is now verified` : `${user.name ?? user.email} has been suspended`);
+      fetchUsers(pagination.page);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error || "Failed to update agent status");
+    }
+  };
+
+  const STATUS_STYLE: Record<string, { label: string; className: string }> = {
+    INCOMPLETE: { label: "Profile incomplete", className: "bg-gray-100 text-gray-700" },
+    PENDING_REVIEW: { label: "To verify", className: "bg-amber-100 text-amber-800" },
+    ACTIVE: { label: "Verified", className: "bg-emerald-100 text-emerald-800" },
+    SUSPENDED: { label: "Suspended", className: "bg-red-100 text-red-700" },
+  };
+
   const filtered = users.filter(
     (u) =>
       (u.name ?? "").toLowerCase().includes(search.toLowerCase()) ||
@@ -295,6 +318,7 @@ export default function AdminUsersPage() {
                 <SelectItem value="ALL">All Roles</SelectItem>
                 <SelectItem value="AGENT">Agents</SelectItem>
                 <SelectItem value="ADMIN">Admins</SelectItem>
+                <SelectItem value="CLIENT">Clients</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -318,6 +342,7 @@ export default function AdminUsersPage() {
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
+                    <TableHead>Agent status</TableHead>
                     <TableHead>Company</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Properties</TableHead>
@@ -342,6 +367,18 @@ export default function AdminUsersPage() {
                           {user.role}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        {user.role === "AGENT" && user.agentStatus ? (
+                          <div className="space-y-0.5">
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[user.agentStatus]?.className ?? ""}`}>
+                              {STATUS_STYLE[user.agentStatus]?.label ?? user.agentStatus}
+                            </span>
+                            {user.license && <p className="text-[11px] text-muted-foreground">Licence: {user.license}</p>}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-sm">
                         {user.company ?? "—"}
                       </TableCell>
@@ -360,6 +397,27 @@ export default function AdminUsersPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {user.role === "AGENT" && user.agentStatus !== "ACTIVE" && user.agentStatus !== "INCOMPLETE" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 text-emerald-700"
+                              onClick={() => setAgentStatus(user, "ACTIVE")}
+                              title="Approve agent"
+                            >
+                              <BadgeCheck className="h-4 w-4" /> Approve
+                            </Button>
+                          )}
+                          {user.role === "AGENT" && user.agentStatus === "ACTIVE" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setAgentStatus(user, "SUSPENDED")}
+                              title="Suspend agent"
+                            >
+                              <Ban className="h-4 w-4 text-amber-600" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"

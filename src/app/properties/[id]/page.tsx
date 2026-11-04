@@ -43,6 +43,7 @@ import {
   Video,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AgentChat } from "@/components/chat/agent-chat";
 import { parseMessagingError, networkError } from "@/lib/messaging-errors";
 
 interface Property {
@@ -91,13 +92,6 @@ export default function PropertyDetailPage() {
   const [similar, setSimilar] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentImage, setCurrentImage] = useState(0);
-  const [contactForm, setContactForm] = useState({
-    senderName: "",
-    senderEmail: "",
-    senderPhone: "",
-    subject: "",
-    body: "",
-  });
   const [visitForm, setVisitForm] = useState({
     visitorName: "",
     visitorEmail: "",
@@ -114,10 +108,6 @@ export default function PropertyDetailPage() {
         if (res.ok) {
           const data = await res.json();
           setProperty(data);
-          setContactForm((prev) => ({
-            ...prev,
-            subject: `Inquiry about ${data.title}`,
-          }));
         }
       } catch {
         // silently handle
@@ -151,69 +141,6 @@ export default function PropertyDetailPage() {
 
   const images: string[] = property ? JSON.parse(property.images || "[]") : [];
   const videos: string[] = property ? JSON.parse(property.videos || "[]") : [];
-
-  const handleContactSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!property) return;
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/conversations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          visitorName: contactForm.senderName,
-          visitorEmail: contactForm.senderEmail,
-          visitorPhone: contactForm.senderPhone || undefined,
-          subject: contactForm.subject,
-          body: contactForm.body,
-          propertyId: property.id,
-          agentId: property.agent.id,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const token = data.conversation?.visitorToken;
-        const conversationId = data.conversation?.id;
-        toast.success("Message sent! The agent will reply in your inbox here.", {
-          duration: 6000,
-        });
-        setContactForm({
-          senderName: "",
-          senderEmail: "",
-          senderPhone: "",
-          subject: "",
-          body: "",
-        });
-        // Offer the visitor a link to view the conversation (magic token)
-        if (token && conversationId) {
-          const link = `/messages/${token}`;
-          setTimeout(() => {
-            toast(
-              <div className="space-y-1">
-                <p className="font-medium">Track this conversation</p>
-                <a
-                  href={link}
-                  className="text-sm underline"
-                  style={{ color: "#2E8B57" }}
-                >
-                  Open your inbox →
-                </a>
-              </div>,
-              { duration: 12000 }
-            );
-          }, 1500);
-        }
-      } else {
-        const e = await parseMessagingError(res);
-        toast.error(e.error, { description: e.hint ?? e.message });
-      }
-    } catch {
-      const e = networkError();
-      toast.error(e.error, { description: e.message });
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleVisitSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -549,96 +476,18 @@ export default function PropertyDetailPage() {
 
               <Separator />
 
-              {/* Contact Form */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Send className="h-5 w-5" />
-                    Contact Agent
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleContactSubmit} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="senderName">Full Name</Label>
-                        <Input
-                          id="senderName"
-                          required
-                          value={contactForm.senderName}
-                          onChange={(e) =>
-                            setContactForm((prev) => ({
-                              ...prev,
-                              senderName: e.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="senderEmail">Email</Label>
-                        <Input
-                          id="senderEmail"
-                          type="email"
-                          required
-                          value={contactForm.senderEmail}
-                          onChange={(e) =>
-                            setContactForm((prev) => ({
-                              ...prev,
-                              senderEmail: e.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="senderPhone">Phone (Optional)</Label>
-                      <Input
-                        id="senderPhone"
-                        value={contactForm.senderPhone}
-                        onChange={(e) =>
-                          setContactForm((prev) => ({
-                            ...prev,
-                            senderPhone: e.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="subject">Subject</Label>
-                      <Input
-                        id="subject"
-                        required
-                        value={contactForm.subject}
-                        onChange={(e) =>
-                          setContactForm((prev) => ({
-                            ...prev,
-                            subject: e.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="body">Message</Label>
-                      <Textarea
-                        id="body"
-                        required
-                        rows={4}
-                        value={contactForm.body}
-                        onChange={(e) =>
-                          setContactForm((prev) => ({
-                            ...prev,
-                            body: e.target.value,
-                          }))
-                        }
-                        placeholder="I'm interested in this property..."
-                      />
-                    </div>
-                    <Button type="submit" className="w-full" disabled={submitting}>
-                      {submitting ? "Sending..." : "Send Message"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
+              {/* Chat with the listing agent */}
+              <div>
+                <h2 className="mb-4 text-xl font-semibold flex items-center gap-2">
+                  <Send className="h-5 w-5" />
+                  Chat with the agent
+                </h2>
+                <AgentChat
+                  agent={property.agent}
+                  propertyId={property.id}
+                  propertyTitle={property.title}
+                />
+              </div>
             </div>
 
             {/* Right Column - Agent & Visit Schedule */}
@@ -683,7 +532,7 @@ export default function PropertyDetailPage() {
                     </a>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Mail className="h-4 w-4" />
-                      <span>Use the form below to message {property.agent.name.split(" ")[0]}</span>
+                      <a href="#chat" className="hover:text-primary">Chat with {property.agent.name.split(" ")[0]} below</a>
                     </div>
                   </div>
                 </CardContent>

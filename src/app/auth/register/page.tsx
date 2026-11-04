@@ -15,7 +15,7 @@ import { Eye, EyeOff, Shield, Building2, AlertCircle, Settings } from "lucide-re
 import { toast } from "sonner";
 
 function RegisterForm() {
-  const [role, setRole] = useState<"AGENT" | "ADMIN">("AGENT");
+  const role = "AGENT" as "AGENT" | "ADMIN"; // admin accounts are created by an admin only
   const [oauthProviders, setOauthProviders] = useState<Record<string, any>>({});
   const [form, setForm] = useState({
     name: "",
@@ -84,7 +84,7 @@ function RegisterForm() {
       const res = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, role }),
+        body: JSON.stringify(form),
       });
 
       if (res.ok) {
@@ -168,48 +168,6 @@ function RegisterForm() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Role Selection Dropdown */}
-            <div>
-              <Label htmlFor="role-select" className="mb-2 block">
-                Account Type
-              </Label>
-              <Select
-                value={role}
-                onValueChange={(val) => {
-                  setRole(val as "AGENT" | "ADMIN");
-                  setErrors({});
-                }}
-              >
-                <SelectTrigger id="role-select" className="w-full">
-                  <SelectValue placeholder="Select account type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="AGENT">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4" style={{ color: "#2E8B57" }} />
-                      <div>
-                        <div className="font-medium">Real Estate Agent</div>
-                        <div className="text-xs text-muted-foreground">
-                          List and manage properties for clients
-                        </div>
-                      </div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="ADMIN">
-                    <div className="flex items-center gap-2">
-                      <Shield className="h-4 w-4" style={{ color: "#F4C430" }} />
-                      <div>
-                        <div className="font-medium">Platform Administrator</div>
-                        <div className="text-xs text-muted-foreground">
-                          Full access to manage the platform
-                        </div>
-                      </div>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* Name */}
             <div>
               <Label htmlFor="name">Full Name</Label>
