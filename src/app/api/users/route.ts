@@ -44,6 +44,8 @@ export async function GET(request: NextRequest) {
           license: true,
           bio: true,
           image: true,
+          agentStatus: true,
+          profileCompletedAt: true,
           createdAt: true,
           _count: {
             select: {
@@ -81,6 +83,10 @@ export async function GET(request: NextRequest) {
 // POST /api/users - Register a new user
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if ((session?.user as any)?.role !== "ADMIN") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
     const body = await request.json();
     const validatedData = registerSchema.parse(body);
 
