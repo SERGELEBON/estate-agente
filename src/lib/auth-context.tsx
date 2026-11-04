@@ -23,5 +23,10 @@ export function useAuth() {
     isLoading: status === "loading",
     role: (session?.user as any)?.role ?? null,
     userId: (session?.user as any)?.id ?? null,
+    agentStatus: ((session?.user as any)?.agentStatus ?? "ACTIVE") as
+      | "INCOMPLETE"
+      | "PENDING_REVIEW"
+      | "ACTIVE"
+      | "SUSPENDED",
   };
 }

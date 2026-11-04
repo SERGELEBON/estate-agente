@@ -2,11 +2,28 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
-import { db } from "@/lib/db";
+import { cookies } from "next/headers";
 import { compare } from "bcryptjs";
+import { db } from "@/lib/db";
+import { verifyOtp } from "@/lib/otp";
+import { INTENT_COOKIE, normalizeEmail } from "@/lib/security";
 
-// Build providers list dynamically
+export type Role = "ADMIN" | "AGENT" | "CLIENT";
+export type AgentStatus = "INCOMPLETE" | "PENDING_REVIEW" | "ACTIVE" | "SUSPENDED";
+
+/** How often the JWT re-reads role/status from the DB, so admin decisions apply without re-login. */
+const TOKEN_SYNC_MS = 60_000;
+
+function readIntent(): "agent" | "client" {
+  try {
+    return cookies().get(INTENT_COOKIE)?.value === "agent" ? "agent" : "client";
+  } catch {
+    return "client";
+  }
+}
+
 const providers: NextAuthOptions["providers"] = [
+  // Agents / admins with a password
   CredentialsProvider({
     id: "credentials",
     name: "credentials",
@@ -15,68 +32,59 @@ const providers: NextAuthOptions["providers"] = [
       password: { label: "Password", type: "password" },
     },
     async authorize(credentials) {
-      try {
-        console.log("[Auth] Authorize called with email:", credentials?.email);
+      if (!credentials?.email || !credentials?.password) return null;
+      const user = await db.user.findUnique({ where: { email: normalizeEmail(credentials.email) } });
+      if (!user?.password) return null;
+      const valid = await compare(credentials.password, user.password);
+      if (!valid) return null;
+      return { id: user.id, email: user.email, name: user.name, image: user.image, role: user.role } as any;
+    },
+  }),
 
-        if (!credentials?.email || !credentials?.password) {
-          console.log("[Auth] Missing email or password");
-          return null;
-        }
+  // Clients: passwordless email code (works for iCloud, Outlook, Yahoo, company domains…)
+  CredentialsProvider({
+    id: "email-otp",
+    name: "Email code",
+    credentials: {
+      email: { label: "Email", type: "email" },
+      code: { label: "Code", type: "text" },
+      name: { label: "Name", type: "text" },
+    },
+    async authorize(credentials) {
+      if (!credentials?.email || !credentials?.code) return null;
+      const email = normalizeEmail(credentials.email);
+      const ok = await verifyOtp(email, credentials.code);
+      if (!ok) return null;
 
-        console.log("[Auth] Looking up user in database...");
-        const user = await db.user.findUnique({
-          where: { email: credentials.email.toLowerCase().trim() },
-        });
-
-        if (!user) {
-          console.log("[Auth] User not found:", credentials.email);
-          return null;
-        }
-
-        console.log("[Auth] User found:", user.email, "Has password:", !!user.password);
-
-        if (!user.password) {
-          console.log("[Auth] No password (OAuth user)");
-          return null;
-        }
-
-        console.log("[Auth] Comparing passwords...");
-        const isValid = await compare(credentials.password, user.password);
-
-        if (!isValid) {
-          console.log("[Auth] Invalid password for:", credentials.email);
-          return null;
-        }
-
-        console.log("[Auth] Login successful:", user.email, "Role:", user.role);
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          image: user.image,
-        };
-      } catch (error: any) {
-        console.error("[Auth] Error in authorize:", error.message);
-        console.error("[Auth] Error stack:", error.stack);
-        return null;
-      }
+      const name = credentials.name?.trim().slice(0, 80) || null;
+      const existing = await db.user.findUnique({ where: { email } });
+      if (existing?.role === "AGENT" && existing.agentStatus === "SUSPENDED") return null;
+      const user = existing
+        ? await db.user.update({
+            where: { id: existing.id },
+            data: {
+              emailVerified: existing.emailVerified ?? new Date(),
+              ...(!existing.name && name ? { name } : {}),
+            },
+          })
+        : await db.user.create({
+            data: { email, name: name ?? email.split("@")[0], role: "CLIENT", emailVerified: new Date() },
+          });
+      return { id: user.id, email: user.email, name: user.name, image: user.image, role: user.role } as any;
     },
   }),
 ];
 
-// Only add Google provider if credentials are configured
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   providers.push(
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      authorization: { params: { prompt: "select_account" } },
     })
   );
 }
 
-// Only add Facebook provider if credentials are configured
 if (process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET) {
   providers.push(
     FacebookProvider({
@@ -87,23 +95,15 @@ if (process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET) {
 }
 
 export const authOptions: NextAuthOptions = {
-  // IMPORTANT: Do NOT use PrismaAdapter when using JWT strategy with Credentials provider.
-  // PrismaAdapter is designed for database sessions and OAuth providers.
-  // With JWT strategy + Credentials, the adapter creates conflicts:
-  //   - It tries to create Account records for credentials login (which fails)
-  //   - It interferes with the JWT token flow
-  //   - It causes signIn() to return errors even when authorize() succeeds
-  // When OAuth is added later, we'll handle user creation manually in the signIn callback.
+  // JWT sessions, no adapter: OAuth users are provisioned manually in the signIn callback.
   providers,
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
+  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
   cookies: {
     sessionToken: {
-      name: process.env.NODE_ENV === "production"
-        ? "__Secure-next-auth.session-token"
-        : "next-auth.session-token",
+      name:
+        process.env.NODE_ENV === "production"
+          ? "__Secure-next-auth.session-token"
+          : "next-auth.session-token",
       options: {
         httpOnly: true,
         sameSite: "lax",
@@ -113,67 +113,85 @@ export const authOptions: NextAuthOptions = {
     },
   },
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
-      // On sign in, add role and id to token from the user object returned by authorize()
+    async signIn({ user, account, profile }) {
+      if (!account || account.type !== "oauth") return true;
+
+      // Only accept Google accounts whose email Google has verified.
+      if (account.provider === "google" && (profile as any)?.email_verified === false) return false;
+      if (!user.email) return false;
+
+      const email = normalizeEmail(user.email);
+      let dbUser = await db.user.findUnique({ where: { email } });
+
+      if (!dbUser) {
+        const intent = readIntent();
+        dbUser = await db.user.create({
+          data: {
+            email,
+            name: user.name ?? email.split("@")[0],
+            image: user.image,
+            emailVerified: new Date(),
+            role: intent === "agent" ? "AGENT" : "CLIENT",
+            agentStatus: intent === "agent" ? "INCOMPLETE" : "ACTIVE",
+          },
+        });
+      } else if (!dbUser.image || !dbUser.emailVerified) {
+        dbUser = await db.user.update({
+          where: { id: dbUser.id },
+          data: { image: dbUser.image ?? user.image, emailVerified: dbUser.emailVerified ?? new Date() },
+        });
+      }
+
+      if (dbUser.role === "AGENT" && dbUser.agentStatus === "SUSPENDED") {
+        return "/auth/signin?error=AccountSuspended";
+      }
+
+      (user as any).id = dbUser.id;
+      (user as any).role = dbUser.role;
+      return true;
+    },
+
+    async jwt({ token, user, trigger }) {
       if (user) {
+        token.id = (user as any).id;
         token.role = (user as any).role;
-        token.id = user.id;
-        token.email = user.email;
+        token.syncedAt = 0; // force a DB sync below
       }
 
-      // On session update, refresh the role from DB
-      if (trigger === "update" && session?.role) {
-        token.role = session.role;
+      const stale = !token.syncedAt || Date.now() - (token.syncedAt as number) > TOKEN_SYNC_MS;
+      if (token.id && (stale || trigger === "update")) {
+        // Never trust client-provided values on update(): always re-read from the DB.
+        const fresh = await db.user.findUnique({
+          where: { id: token.id as string },
+          select: { role: true, agentStatus: true, name: true, image: true, email: true },
+        });
+        if (!fresh) return { ...token, id: undefined, role: undefined };
+        token.role = fresh.role as Role;
+        token.agentStatus = fresh.agentStatus as AgentStatus;
+        token.name = fresh.name;
+        token.picture = fresh.image;
+        token.email = fresh.email;
+        token.syncedAt = Date.now();
       }
-
       return token;
     },
+
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).role = token.role;
         (session.user as any).id = token.id;
+        (session.user as any).role = token.role;
+        (session.user as any).agentStatus = token.agentStatus ?? "ACTIVE";
+        session.user.name = (token.name as string) ?? session.user.name;
+        session.user.image = (token.picture as string) ?? session.user.image;
       }
       return session;
     },
-    async signIn({ user, account }) {
-      // For OAuth providers, ensure the user exists in our DB
-      if (account?.provider !== "credentials" && user.email) {
-        const existingUser = await db.user.findUnique({
-          where: { email: user.email },
-        });
-        if (!existingUser) {
-          // New OAuth user - create with AGENT role by default
-          const newUser = await db.user.create({
-            data: {
-              email: user.email,
-              name: user.name ?? "",
-              image: user.image,
-              role: "AGENT",
-            },
-          });
-          // Update the user object with role for the JWT callback
-          (user as any).role = newUser.role;
-          (user as any).id = newUser.id;
-        } else {
-          // Update the user object with existing role for JWT callback
-          (user as any).role = existingUser.role;
-          (user as any).id = existingUser.id;
-        }
-      }
-      return true;
-    },
+
     async redirect({ url, baseUrl }) {
-      // Allows relative callback URLs
       if (url.startsWith("/")) return `${baseUrl}${url}`;
-      // Allows callback URLs on the same origin
       try {
         if (new URL(url).origin === baseUrl) return url;
-      } catch {
-        // Invalid URL, fall through
-      }
-      // For credentials login with redirect:false, the client handles the redirect
-      // For OAuth, we redirect to the homepage (client-side will route to dashboard)
-      // Don't redirect to /dashboard here to avoid redirect loops with NextAuth
+      } catch {}
       return baseUrl;
     },
   },
@@ -181,17 +199,26 @@ export const authOptions: NextAuthOptions = {
     signIn: "/auth/signin",
     error: "/auth/signin",
   },
-  secret: process.env.NEXTAUTH_SECRET ?? "state-immocom-secret-key-dev-2024",
-  debug: true,
+  secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV !== "production",
 };
 
-// Export helper to check which OAuth providers are configured
 export function isOAuthConfigured(provider: "google" | "facebook"): boolean {
-  if (provider === "google") {
-    return !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
-  }
-  if (provider === "facebook") {
-    return !!(process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET);
-  }
-  return false;
+  if (provider === "google") return !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+  return !!(process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET);
+}
+
+/** Server helper: current user identity from the session, or null. */
+export async function getSessionUser() {
+  const { getServerSession } = await import("next-auth");
+  const session = await getServerSession(authOptions);
+  const u = session?.user as any;
+  if (!u?.id) return null;
+  return {
+    id: u.id as string,
+    role: u.role as Role,
+    agentStatus: (u.agentStatus ?? "ACTIVE") as AgentStatus,
+    name: (u.name as string | null) ?? null,
+    email: (u.email as string | null) ?? null,
+  };
 }
