@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { messagingErrors, zodIssuesToFields } from "@/lib/messaging-errors";
+import { notifyNewMessage } from "@/lib/chat";
 
 const replySchema = z.object({
   body: z
@@ -40,7 +41,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(e, { status: 400 });
     }
 
-    const conversation = await db.conversation.findUnique({ where: { id } });
+    const conversation = await db.conversation.findUnique({
+      where: { id },
+      include: {
+        agent: { select: { name: true, email: true } },
+        client: { select: { name: true, email: true } },
+        property: { select: { title: true } },
+      },
+    });
     if (!conversation) {
       const e = messagingErrors.conversationNotFound();
       return NextResponse.json(e, { status: 404 });
@@ -58,10 +66,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const userRole = (session?.user as any)?.role;
     const visitorToken = body.visitorToken;
 
-    const isAgent = session?.user && (userRole === "ADMIN" || conversation.agentId === userId);
-    const isVisitor = visitorToken && visitorToken === conversation.visitorToken;
+    const isAgent = !!session?.user && (userRole === "ADMIN" || conversation.agentId === userId);
+    const isClient = !!session?.user && !!conversation.clientId && conversation.clientId === userId;
+    // Legacy magic-link visitors only — guest/claimed conversations require a verified account.
+    const isVisitor =
+      !conversation.clientId &&
+      !conversation.guestIpHash &&
+      !!visitorToken &&
+      visitorToken === conversation.visitorToken;
 
-    if (!isAgent && !isVisitor) {
+    if (isClient && !isAgent) {
+      // handled below as the customer side
+    } else if (!isAgent && !isVisitor) {
       if (!session?.user) {
         const e = messagingErrors.authRequired();
         return NextResponse.json(e, { status: 401 });
@@ -80,7 +96,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         data: {
           conversationId: id,
           senderType,
-          senderUserId: isAgent ? userId : null,
+          senderUserId: isAgent || isClient ? userId : null,
           senderName: isAgent
             ? (await tx.user.findUnique({ where: { id: userId }, select: { name: true } }))?.name ?? "Agent"
             : conversation.visitorName,
@@ -106,6 +122,28 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       return msg;
     });
+
+    if (isAgent) {
+      await notifyNewMessage({
+        to: conversation.client?.email ?? (conversation.visitorEmail || null),
+        recipientName: conversation.client?.name ?? conversation.visitorName,
+        senderName: message.senderName || "Your agent",
+        body: validated.body,
+        propertyTitle: conversation.property?.title,
+        previousUnread: conversation.unreadForVisitor,
+        audience: "client",
+      });
+    } else {
+      await notifyNewMessage({
+        to: conversation.agent.email,
+        recipientName: conversation.agent.name,
+        senderName: conversation.visitorName,
+        body: validated.body,
+        propertyTitle: conversation.property?.title,
+        previousUnread: conversation.unreadForAgent,
+        audience: "agent",
+      });
+    }
 
     return NextResponse.json({ message }, { status: 201 });
   } catch (error: any) {
