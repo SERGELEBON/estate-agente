@@ -39,7 +39,8 @@ export function Navbar() {
   }, []);
 
   const dashboardPath =
-    role === "ADMIN" ? "/dashboard/admin" : "/dashboard/agent";
+    role === "ADMIN" ? "/dashboard/admin" : role === "CLIENT" ? "/account/messages" : "/dashboard/agent";
+  const dashboardLabel = role === "CLIENT" ? "My messages" : "Dashboard";
 
   const isActive = (href: string) => {
     if (!pathname) return false;
@@ -122,7 +123,7 @@ export function Navbar() {
                   : undefined
               }
             >
-              Dashboard
+              {dashboardLabel}
             </Link>
           )}
         </div>
@@ -161,7 +162,7 @@ export function Navbar() {
               style={{ backgroundColor: "#2E8B57" }}
               className="text-white hover:opacity-90"
             >
-              <Link href="/auth/signin">Sign In</Link>
+              <Link href="/account/signin">Sign In</Link>
             </Button>
           )}
         </div>
@@ -233,7 +234,7 @@ export function Navbar() {
                         : undefined
                     }
                   >
-                    Dashboard
+                    {dashboardLabel}
                   </Link>
                 </SheetClose>
               )}
@@ -266,7 +267,7 @@ export function Navbar() {
                         {user.name}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        Go to Dashboard
+                        {role === "CLIENT" ? "Go to my messages" : "Go to Dashboard"}
                       </span>
                     </div>
                   </Link>
@@ -288,7 +289,7 @@ export function Navbar() {
                   style={{ backgroundColor: "#2E8B57" }}
                   className="w-full text-white hover:opacity-90"
                 >
-                  <Link href="/auth/signin" onClick={() => setMobileOpen(false)}>
+                  <Link href="/account/signin" onClick={() => setMobileOpen(false)}>
                     Sign In
                   </Link>
                 </Button>
