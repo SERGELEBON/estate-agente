@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { cn } from "@/lib/utils";
+import { SocialButtons, setAuthIntent } from "@/components/auth/social-buttons";
 
 const GOOGLE_DOMAINS = ["gmail.com", "googlemail.com"];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -79,11 +80,7 @@ export function ClientAuthPanel({ callbackUrl, onSignedIn, onBeforeGoogle, title
     setBusy("google");
     setError(null);
     onBeforeGoogle?.();
-    await fetch("/api/auth/intent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ intent: "client" }),
-    }).catch(() => undefined);
+    await setAuthIntent("client");
     await signIn("google", { callbackUrl }, isGmail ? { login_hint: email.trim() } : undefined);
   };
 
@@ -211,18 +208,17 @@ export function ClientAuthPanel({ callbackUrl, onSignedIn, onBeforeGoogle, title
                 {busy === "send" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
                 Send me a verification code
               </Button>
-              {googleEnabled && (
-                <>
+              <SocialButtons
+                intent="client"
+                callbackUrl={callbackUrl}
+                onBeforeRedirect={onBeforeGoogle}
+                header={
                   <div className="relative py-1 text-center text-xs text-muted-foreground">
                     <span className="relative z-10 bg-card px-2">or</span>
                     <span className="absolute inset-x-0 top-1/2 h-px bg-border" />
                   </div>
-                  <Button type="button" variant="outline" className="w-full gap-2 h-11" onClick={continueWithGoogle} disabled={!!busy}>
-                    {busy === "google" ? <Loader2 className="h-4 w-4 animate-spin" /> : <GoogleIcon className="h-4 w-4" />}
-                    Continue with Google
-                  </Button>
-                </>
-              )}
+                }
+              />
             </div>
           )}
         </form>
