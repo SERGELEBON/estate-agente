@@ -127,8 +127,8 @@ function SidebarContent({
             (item.href !== "/dashboard/agent" &&
               item.href !== "/dashboard/admin" &&
               pathname?.startsWith(item.href));
-          const showBadge =
-            unreadCount && unreadCount > 0 && item.label === "Messages";
+          // Boolean guard: `0 && …` would render a stray "0" next to every link
+          const showBadge = (unreadCount ?? 0) > 0 && item.label === "Messages";
           return (
             <Link
               key={item.href}
@@ -179,6 +179,16 @@ function SidebarContent({
           <User className="h-4 w-4" />
           Profile
         </Link>
+        {user?.role === "AGENT" && (
+          <Link
+            href="/onboarding/agent"
+            onClick={onNavigate}
+            className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <Building2 className="h-4 w-4" />
+            Agent profile
+          </Link>
+        )}
       </nav>
 
       <Separator />
@@ -221,7 +231,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isAuthenticated, isLoading, role } = useAuth();
+  const { user, isAuthenticated, isLoading, role, agentStatus } = useAuth();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -244,7 +254,11 @@ export default function DashboardLayout({
     return null;
   }
 
-  const navItems = role === "ADMIN" ? adminNavItems : agentNavItems;
+  const agentVerified = role !== "AGENT" || agentStatus === "ACTIVE";
+  const navItems =
+    role === "ADMIN"
+      ? adminNavItems
+      : agentNavItems.filter((i) => agentVerified || i.href !== "/dashboard/agent/properties/new");
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -309,6 +323,17 @@ export default function DashboardLayout({
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto bg-muted/30 p-4 lg:p-6">
+          {role === "AGENT" && agentStatus === "PENDING_REVIEW" && (
+            <div className="mb-4 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+              <span>
+                <strong>Your profile is under review.</strong> You'll be able to publish listings and receive client
+                messages once our team has verified your licence.
+              </span>
+              <Link href="/onboarding/agent" className="shrink-0 font-medium underline">
+                Edit my profile
+              </Link>
+            </div>
+          )}
           {children}
         </main>
       </div>

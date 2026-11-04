@@ -1,25 +1,12 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { getSessionUser } from "@/lib/auth";
 
-/**
- * /dashboard — Root dashboard page that redirects to the correct
- * role-based sub-dashboard (admin or agent).
- * Uses SERVER-SIDE session check with getServerSession to avoid
- * client-side redirect loops.
- */
+/** /dashboard — sends each role to its own space. */
 export default async function DashboardRedirectPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user) {
-    redirect("/auth/signin");
-  }
-
-  const role = (session.user as any).role;
-
-  if (role === "ADMIN") {
-    redirect("/dashboard/admin");
-  } else {
-    redirect("/dashboard/agent");
-  }
+  const me = await getSessionUser();
+  if (!me) redirect("/auth/signin");
+  if (me.role === "ADMIN") redirect("/dashboard/admin");
+  if (me.role === "CLIENT") redirect("/account/messages");
+  if (me.agentStatus === "INCOMPLETE") redirect("/onboarding/agent");
+  redirect("/dashboard/agent");
 }
