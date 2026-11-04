@@ -41,7 +41,7 @@ const providers: NextAuthOptions["providers"] = [
     },
   }),
 
-  // Clients: passwordless email code (works for iCloud, Outlook, Yahoo, company domains…)
+  // Passwordless email code for agents and clients (iCloud, Outlook, Yahoo, company domains…)
   CredentialsProvider({
     id: "email-otp",
     name: "Email code",
@@ -49,6 +49,7 @@ const providers: NextAuthOptions["providers"] = [
       email: { label: "Email", type: "email" },
       code: { label: "Code", type: "text" },
       name: { label: "Name", type: "text" },
+      intent: { label: "Intent", type: "text" },
     },
     async authorize(credentials) {
       if (!credentials?.email || !credentials?.code) return null;
@@ -68,7 +69,15 @@ const providers: NextAuthOptions["providers"] = [
             },
           })
         : await db.user.create({
-            data: { email, name: name ?? email.split("@")[0], role: "CLIENT", emailVerified: new Date() },
+            data: {
+              email,
+              name: name ?? email.split("@")[0],
+              emailVerified: new Date(),
+              // New agents still have to complete their profile and be approved by an admin.
+              ...(credentials.intent === "agent"
+                ? { role: "AGENT", agentStatus: "INCOMPLETE" }
+                : { role: "CLIENT" }),
+            },
           });
       return { id: user.id, email: user.email, name: user.name, image: user.image, role: user.role } as any;
     },
