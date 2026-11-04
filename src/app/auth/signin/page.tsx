@@ -41,14 +41,23 @@ function SignInForm() {
   // If already authenticated, redirect to the correct dashboard
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
-      const role = (session.user as any).role;
-      if (role === "ADMIN") {
-        router.replace("/dashboard/admin");
-      } else {
-        router.replace("/dashboard/agent");
-      }
+      // /dashboard routes each role (admin, agent, agent onboarding, client) server-side
+      router.replace("/dashboard");
     }
   }, [status, session, router]);
+
+  // Surface NextAuth errors passed back in the URL (?error=...)
+  useEffect(() => {
+    const code = new URL(window.location.href).searchParams.get("error");
+    if (!code) return;
+    const messages: Record<string, string> = {
+      AccountSuspended: "This agent account is suspended. Please contact State-ImmoCom support.",
+      AccessDenied: "Access denied. Please use a verified Google account.",
+      OAuthAccountNotLinked: "This email is already registered with another sign-in method.",
+      Callback: "Google sign-in failed. Please try again.",
+    };
+    setError(messages[code] ?? "Sign-in failed. Please try again.");
+  }, []);
 
   useEffect(() => {
     fetch("/api/auth/providers")
@@ -126,7 +135,7 @@ function SignInForm() {
       const role = sessionData.user.role;
       console.log("[SignIn] Login successful! Role:", role);
 
-      const dashboardUrl = role === "ADMIN" ? "/dashboard/admin" : "/dashboard/agent";
+      const dashboardUrl = "/dashboard";
       console.log("[SignIn] Redirecting to:", dashboardUrl);
 
       // Force NextAuth to refresh the session on the client side
@@ -141,7 +150,13 @@ function SignInForm() {
     }
   };
 
-  const handleOAuthSignIn = (provider: string) => {
+  const handleOAuthSignIn = async (provider: string) => {
+    // New Google accounts created from the agent portal become agents (profile + verification required).
+    await fetch("/api/auth/intent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ intent: "agent" }),
+    }).catch(() => undefined);
     signIn(provider, { callbackUrl: "/dashboard" });
   };
 
@@ -372,6 +387,12 @@ function SignInForm() {
               style={{ color: "#2E8B57" }}
             >
               Register as Agent
+            </Link>
+          </p>
+          <p className="mt-2 text-center text-sm text-muted-foreground">
+            Looking for a property?{" "}
+            <Link href="/account/signin" className="font-medium hover:underline" style={{ color: "#2E8B57" }}>
+              Client sign-in
             </Link>
           </p>
         </CardContent>
