@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { hash } from "bcryptjs";
+import { agentApprovedEmail, sendEmail } from "@/lib/email";
 
 // PUT /api/users/[id] - Update user (ADMIN only)
 export async function PUT(
@@ -30,8 +31,13 @@ export async function PUT(
     }
 
     const updateData: any = {};
-    if (body.role && ["ADMIN", "AGENT"].includes(body.role)) {
+    if (body.role && ["ADMIN", "AGENT", "CLIENT"].includes(body.role)) {
       updateData.role = body.role;
+    }
+    const approving = body.agentStatus === "ACTIVE" && existingUser.agentStatus !== "ACTIVE";
+    if (body.agentStatus && ["INCOMPLETE", "PENDING_REVIEW", "ACTIVE", "SUSPENDED"].includes(body.agentStatus)) {
+      updateData.agentStatus = body.agentStatus;
+      updateData.agentReviewedAt = new Date();
     }
     if (body.name !== undefined) updateData.name = body.name;
     if (body.phone !== undefined) updateData.phone = body.phone;
@@ -55,9 +61,14 @@ export async function PUT(
         license: true,
         bio: true,
         image: true,
+        agentStatus: true,
         createdAt: true,
       },
     });
+
+    if (approving && user.role === "AGENT") {
+      await sendEmail({ to: user.email, ...agentApprovedEmail(user.name) });
+    }
 
     return NextResponse.json(user);
   } catch (error) {
