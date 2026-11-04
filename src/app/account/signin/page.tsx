@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Suspense } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { ClientAuthPanel } from "@/components/chat/client-auth-panel";
+import { AuthPanel } from "@/components/auth/auth-panel";
 
 function ClientSignIn() {
   const router = useRouter();
@@ -26,7 +26,8 @@ function ClientSignIn() {
         </Link>
         <Card>
           <CardContent className="p-6">
-            <ClientAuthPanel
+            <AuthPanel
+              intent="client"
               title="Sign in to your client space"
               subtitle="Chat with agents, follow your inquiries and get notified when they reply."
               callbackUrl={callbackUrl}
