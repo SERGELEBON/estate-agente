@@ -36,7 +36,8 @@ export async function POST(request: NextRequest) {
     const conversation = await db.conversation.findUnique({
       where: { visitorToken: validated.token },
     });
-    if (!conversation) {
+    // Guest and account-owned conversations can only be continued by a signed-in client.
+    if (!conversation || conversation.clientId || conversation.guestIpHash) {
       const e = messagingErrors.invalidVisitorToken();
       return NextResponse.json(e, { status: 404 });
     }
