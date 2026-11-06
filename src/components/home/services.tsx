@@ -1,117 +1,145 @@
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Building2, GraduationCap, Home, Languages, Star } from "lucide-react";
-import { COUNTRIES } from "@/lib/geo";
 
-const ghana = COUNTRIES.find((c) => c.code === "GH")!;
-const francophone = COUNTRIES.filter((c) => c.francophone);
+type Service = {
+  key: string;
+  label: string;
+  title: string;
+  text: string;
+  href: string;
+  cta: string;
+  links: { label: string; href: string }[];
+  image: string;
+  alt: string;
+  credit?: string;
+};
 
-const SERVICES = [
+const SERVICES: Service[] = [
   {
     key: "ghana-home",
-    icon: Home,
-    kicker: "Real estate",
-    title: "I want a home in Ghana",
-    text: "Houses, apartments and land to buy or rent, listed by licensed agents you can chat with directly.",
+    label: "Real estate",
+    title: "A home in Ghana",
+    text: "Houses, apartments and land to buy or rent, listed by licensed agents.",
     href: "/properties?country=Ghana",
-    cta: "Browse Ghana listings",
-    chips: ["Accra", "Koforidua", "Kumasi"].map((city) => ({
+    cta: "Browse properties",
+    links: ["Accra", "Koforidua", "Kumasi"].map((city) => ({
       label: city,
       href: `/properties?country=Ghana&city=${encodeURIComponent(city)}`,
     })),
+    image: "/hero-bg.jpg",
+    alt: "Modern villa with a swimming pool in Accra",
   },
   {
     key: "learn-english",
-    icon: GraduationCap,
-    kicker: "Language schools",
-    title: "I want to learn English in Ghana",
-    text: "Verified English schools rated by real students — general English, business English, IELTS & TOEFL.",
+    label: "Language schools",
+    title: "Learn English in Ghana",
+    text: "Compare verified schools and read reviews from their students. General English, IELTS and TOEFL.",
     href: "/schools?language=english&country=GH",
     cta: "Compare English schools",
-    chips: ["Accra", "Kumasi", "Cape Coast"].map((city) => ({
+    links: ["Accra", "Kumasi", "Cape Coast"].map((city) => ({
       label: city,
       href: `/schools?language=english&country=GH&city=${encodeURIComponent(city)}`,
     })),
-    rated: true,
+    image:
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Wikiforhumanrights_Workshop_for_Students_at_the_Centre_for_Climate_Change_and_Sustainability_Studies_Department_university_of_Ghana_17.jpg/1280px-Wikiforhumanrights_Workshop_for_Students_at_the_Centre_for_Climate_Change_and_Sustainability_Studies_Department_university_of_Ghana_17.jpg",
+    alt: "Students in a classroom at the University of Ghana",
+    credit: "Zapsmedia25, CC BY 4.0",
   },
   {
     key: "learn-french",
-    icon: Languages,
-    kicker: "Écoles de français",
-    title: "I want to learn French",
-    text: "French courses for English speakers in Accra and in Côte d'Ivoire, Togo and Benin — DELF & DALF prep.",
+    label: "Language schools",
+    title: "Learn French",
+    text: "French courses for English speakers in Accra, Abidjan, Lomé and Cotonou. DELF and DALF preparation.",
     href: "/schools?language=french",
     cta: "Compare French schools",
-    chips: [
-      { label: `${ghana.flag} Accra`, href: "/schools?language=french&country=GH" },
-      ...francophone
-        .filter((c) => ["CI", "TG", "BJ"].includes(c.code))
-        .map((c) => ({ label: `${c.flag} ${c.cities[0]}`, href: `/schools?language=french&country=${c.code}` })),
+    links: [
+      { label: "Accra", href: "/schools?language=french&country=GH" },
+      { label: "Abidjan", href: "/schools?language=french&country=CI" },
+      { label: "Lomé", href: "/schools?language=french&country=TG" },
+      { label: "Cotonou", href: "/schools?language=french&country=BJ" },
     ],
-    rated: true,
+    image:
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Alliance_Fran%C3%A7aise_d%E2%80%99Accra_2.jpg/1280px-Alliance_Fran%C3%A7aise_d%E2%80%99Accra_2.jpg",
+    alt: "Bilingual French and English signs pointing to classrooms in Accra",
+    credit: "Noahalorwu, CC BY-SA 4.0",
   },
   {
     key: "francophone-home",
-    icon: Building2,
-    kicker: "Immobilier",
-    title: "I want a home in French-speaking Africa",
-    text: "Homes and land in Abidjan, Lomé, Cotonou and Dakar, with agents who speak your language.",
+    label: "Real estate",
+    title: "A home in French-speaking Africa",
+    text: "Homes and land in Côte d'Ivoire, Togo, Benin and Senegal, with agents who speak French and English.",
     href: "/properties?region=francophone",
-    cta: "Browse francophone listings",
-    chips: francophone
-      .filter((c) => ["CI", "TG", "BJ", "SN"].includes(c.code))
-      .map((c) => ({ label: `${c.flag} ${c.name}`, href: `/properties?country=${encodeURIComponent(c.name)}` })),
+    cta: "Browse properties",
+    links: [
+      { label: "Abidjan", href: "/properties?country=C%C3%B4te%20d'Ivoire" },
+      { label: "Lomé", href: "/properties?country=Togo" },
+      { label: "Cotonou", href: "/properties?country=Benin" },
+      { label: "Dakar", href: "/properties?country=Senegal" },
+    ],
+    image:
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Maison_d%27habitation_Lom%C3%A9_01.jpg/1280px-Maison_d%27habitation_Lom%C3%A9_01.jpg",
+    alt: "Two-storey family house in Lomé, Togo",
+    credit: "Kondesso, CC BY-SA 4.0",
   },
 ];
 
-/** "What are you looking for?" — the four entry points between the hero and the listings. */
+/** The four things people come for — between the hero and the latest listings. */
 export function Services() {
   return (
-    <section aria-labelledby="services-title" className="bg-gradient-to-b from-[#f4f8f5] to-background -mt-12 pb-16 pt-24 md:pb-20 md:pt-28">
+    <section aria-labelledby="services-title" className="bg-white pb-20 pt-24 md:pt-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-[#2E8B57]">One platform, four goals</p>
-          <h2 id="services-title" className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">What are you looking for?</h2>
-          <p className="mt-3 text-muted-foreground">Find a home or a language school in Ghana and French-speaking West Africa — every agent and school is verified by our team.</p>
+        <div className="flex flex-col justify-between gap-4 border-b border-neutral-200 pb-8 md:flex-row md:items-end">
+          <div className="max-w-2xl">
+            <p className="text-xs font-medium uppercase tracking-[0.22em] text-[#2E8B57]">Our services</p>
+            <h2 id="services-title" className="mt-3 font-display text-3xl font-semibold tracking-tight text-neutral-900 sm:text-4xl">
+              What are you looking for?
+            </h2>
+          </div>
+          <p className="max-w-md text-[15px] leading-relaxed text-neutral-600">
+            A home or a language school, in Ghana and French-speaking West Africa. Every agent and school is checked by our team.
+          </p>
         </div>
 
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-10 grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
           {SERVICES.map((s) => (
-            <article
-              key={s.key}
-              className="group relative flex flex-col rounded-2xl border bg-card p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#2E8B57]/40 hover:shadow-xl"
-            >
-              <div className="flex items-center justify-between">
-                <span className="grid h-12 w-12 place-items-center rounded-xl bg-[#2E8B57]/10 text-[#2E8B57] transition-colors group-hover:bg-[#2E8B57] group-hover:text-white">
-                  <s.icon className="h-6 w-6" />
-                </span>
-                {s.rated && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[#F4C430]/15 px-2 py-0.5 text-[11px] font-semibold text-[#8a6d00]">
-                    <Star className="h-3 w-3" fill="currentColor" /> Rated by students
+            <article key={s.key} className="group flex flex-col">
+              <Link href={s.href} className="relative block aspect-[4/3] overflow-hidden rounded-xl bg-neutral-100">
+                <Image
+                  src={s.image}
+                  alt={s.alt}
+                  fill
+                  sizes="(min-width:1024px) 25vw, (min-width:640px) 50vw, 100vw"
+                  className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                />
+                {s.credit && (
+                  <span className="absolute bottom-1.5 right-2 text-[9px] text-white/80 [text-shadow:0_1px_3px_rgba(0,0,0,.6)]">
+                    Photo: {s.credit}
                   </span>
                 )}
-              </div>
-              <p className="mt-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{s.kicker}</p>
-              <h3 className="mt-1 text-lg font-bold leading-snug">
-                {/* Stretched link: the whole card is clickable, chips stay independently clickable. */}
-                <Link href={s.href} className="after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none">
+              </Link>
+              <p className="mt-5 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">{s.label}</p>
+              <h3 className="mt-1.5 font-display text-[1.35rem] font-semibold leading-snug text-neutral-900">
+                <Link href={s.href} className="hover:text-[#2E8B57]">
                   {s.title}
                 </Link>
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{s.text}</p>
-              <div className="relative z-10 mt-4 flex flex-wrap gap-1.5">
-                {s.chips.map((c) => (
-                  <Link
-                    key={c.href}
-                    href={c.href}
-                    className="rounded-full border px-2.5 py-1 text-xs font-medium text-foreground/80 transition-colors hover:border-[#2E8B57] hover:bg-[#2E8B57]/5 hover:text-[#2E8B57]"
-                  >
-                    {c.label}
-                  </Link>
+              <p className="mt-2 text-[15px] leading-relaxed text-neutral-600">{s.text}</p>
+              <p className="mt-3 text-sm text-neutral-500">
+                {s.links.map((l, i) => (
+                  <span key={l.href}>
+                    {i > 0 && <span className="mx-1.5 text-neutral-300">·</span>}
+                    <Link href={l.href} className="underline-offset-4 hover:text-neutral-900 hover:underline">
+                      {l.label}
+                    </Link>
+                  </span>
                 ))}
-              </div>
-              <span className="mt-auto inline-flex items-center gap-1.5 pt-6 text-sm font-semibold text-[#2E8B57]">
-                {s.cta} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </span>
+              </p>
+              <Link
+                href={s.href}
+                className="mt-5 inline-flex w-fit border-b border-neutral-900 pb-0.5 text-sm font-medium text-neutral-900 transition-colors hover:border-[#2E8B57] hover:text-[#2E8B57]"
+              >
+                {s.cta}
+              </Link>
             </article>
           ))}
         </div>
