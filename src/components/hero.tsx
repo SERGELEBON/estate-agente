@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, GraduationCap, Home, Languages, MapPin, Search, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,13 +17,12 @@ import { cn } from "@/lib/utils";
 const SLIDES = [
   {
     key: "accra",
-    eyebrow: "Real estate · Ghana",
+    eyebrow: "Real estate — Ghana",
     title: "Find your home",
     highlight: "in Accra",
     text: "Houses, apartments and land in Accra, Kumasi and Koforidua — listed by verified agents.",
     cta: { label: "Browse homes in Ghana", href: "/properties?country=Ghana" },
     secondary: { label: "Talk to an agent", href: "/properties?country=Ghana&city=Accra" },
-    icon: Home,
     image:
       "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Kwame_Nkrumah_Memorial_Park_%26_Mausoleum.jpg/1920px-Kwame_Nkrumah_Memorial_Park_%26_Mausoleum.jpg",
     alt: "Kwame Nkrumah Memorial Park in Accra, Ghana",
@@ -32,13 +31,12 @@ const SLIDES = [
   },
   {
     key: "abidjan",
-    eyebrow: "Real estate · Côte d'Ivoire",
+    eyebrow: "Real estate — Côte d'Ivoire",
     title: "Live in",
     highlight: "Abidjan",
     text: "Homes in Abidjan, Lomé, Cotonou and across French-speaking West Africa.",
     cta: { label: "Homes in francophone Africa", href: "/properties?region=francophone" },
     secondary: { label: "Abidjan listings", href: "/properties?country=C%C3%B4te%20d'Ivoire&city=Abidjan" },
-    icon: MapPin,
     image:
       "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Le_Plateau_depuis_le_Pont_ADO_%E2%80%93_Abidjan.jpg/1920px-Le_Plateau_depuis_le_Pont_ADO_%E2%80%93_Abidjan.jpg",
     alt: "Le Plateau business district of Abidjan at night, seen from the ADO bridge",
@@ -47,13 +45,12 @@ const SLIDES = [
   },
   {
     key: "english",
-    eyebrow: "Language schools · Ghana",
+    eyebrow: "Language schools — Ghana",
     title: "Learn English",
     highlight: "in Ghana",
     text: "Compare verified English schools in Accra and beyond — real reviews, IELTS & TOEFL preparation.",
     cta: { label: "Find an English school", href: "/schools?language=english&country=GH" },
     secondary: { label: "List your school", href: "/schools/join" },
-    icon: GraduationCap,
     image:
       "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Wikiforhumanrights_Workshop_for_Students_at_the_Centre_for_Climate_Change_and_Sustainability_Studies_Department_university_of_Ghana_13.jpg/1920px-Wikiforhumanrights_Workshop_for_Students_at_the_Centre_for_Climate_Change_and_Sustainability_Studies_Department_university_of_Ghana_13.jpg",
     alt: "Students in a workshop at the University of Ghana, Legon",
@@ -62,13 +59,12 @@ const SLIDES = [
   },
   {
     key: "french",
-    eyebrow: "Écoles de langue · Apprendre le français",
+    eyebrow: "Language schools — French",
     title: "Learn French",
     highlight: "in Accra & West Africa",
     text: "French schools in Accra, Abidjan, Lomé and Cotonou for English speakers — DELF & DALF preparation.",
     cta: { label: "Find a French school", href: "/schools?language=french" },
     secondary: { label: "List your school", href: "/schools/join" },
-    icon: Languages,
     image:
       "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Alliance_Fran%C3%A7aise_d%E2%80%99Accra_2.jpg/1920px-Alliance_Fran%C3%A7aise_d%E2%80%99Accra_2.jpg",
     alt: "Bilingual French and English signs in a language school garden in Accra",
@@ -132,7 +128,7 @@ export function Hero() {
     <section
       aria-roledescription="carousel"
       aria-label="State-ImmoCom services"
-      className="relative isolate w-full overflow-hidden bg-[#0f3d25]"
+      className="relative isolate w-full overflow-hidden bg-neutral-900"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
@@ -162,39 +158,30 @@ export function Hero() {
             fill
             priority={i === 0}
             sizes="100vw"
-            className={cn("object-cover transition-transform duration-[8000ms] ease-out", i === index && "scale-105")}
+            className="object-cover"
             style={{ objectPosition: s.position }}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0b2e1c]/95 via-[#0f3d25]/75 to-[#0f3d25]/25" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0b2e1c]/80 via-transparent to-transparent" />
+          {/* Neutral scrim only where the text sits — the photo keeps its real colours. */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/40 to-transparent" />
         </div>
       ))}
 
       <div className="mx-auto flex min-h-[600px] max-w-7xl flex-col justify-center px-4 pb-32 pt-14 sm:px-6 md:min-h-[640px] lg:px-8">
         <div key={slide.key} className="max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-700" aria-live="polite">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white/90 backdrop-blur">
-            <slide.icon className="h-3.5 w-3.5" style={{ color: "#F4C430" }} />
-            {slide.eyebrow}
-          </span>
-          <h1 className="mt-5 text-4xl font-bold leading-[1.1] text-white sm:text-5xl lg:text-6xl">
-            {slide.title} <span style={{ color: "#F4C430" }}>{slide.highlight}</span>
+          <p className="text-xs font-medium uppercase tracking-[0.22em] text-white/85 [text-shadow:0_1px_8px_rgba(0,0,0,.45)]">{slide.eyebrow}</p>
+          <h1 className="mt-4 font-display text-4xl font-semibold leading-[1.08] tracking-tight text-white [text-shadow:0_2px_24px_rgba(0,0,0,.35)] sm:text-5xl lg:text-[4rem]">
+            {slide.title} {slide.highlight}
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-white/85 sm:text-lg">{slide.text}</p>
+          <p className="mt-5 max-w-xl text-base leading-relaxed text-white/90 [text-shadow:0_1px_12px_rgba(0,0,0,.45)] sm:text-lg">{slide.text}</p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Button asChild size="lg" className="h-12 gap-2 px-6 text-[#0f3d25] hover:opacity-90" style={{ backgroundColor: "#F4C430" }}>
-              <Link href={slide.cta.href}>
-                {slide.cta.label} <ArrowRight className="h-4 w-4" />
-              </Link>
+            <Button asChild size="lg" className="h-12 rounded-full bg-white px-7 text-[15px] font-medium text-neutral-900 hover:bg-white/90">
+              <Link href={slide.cta.href}>{slide.cta.label}</Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="h-12 border-white/40 bg-white/5 px-6 text-white backdrop-blur hover:bg-white/15 hover:text-white">
+            <Button asChild size="lg" variant="outline" className="h-12 rounded-full border-white/70 bg-transparent px-7 text-[15px] font-medium text-white hover:bg-white/10 hover:text-white">
               <Link href={slide.secondary.href}>{slide.secondary.label}</Link>
             </Button>
           </div>
-          <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/80">
-            <li className="flex items-center gap-1.5"><BadgeCheck className="h-4 w-4" style={{ color: "#F4C430" }} /> Verified agents & schools</li>
-            <li className="flex items-center gap-1.5"><Star className="h-4 w-4" style={{ color: "#F4C430" }} /> Real client reviews</li>
-            <li className="flex items-center gap-1.5"><MapPin className="h-4 w-4" style={{ color: "#F4C430" }} /> Ghana & francophone Africa</li>
-          </ul>
         </div>
       </div>
 
@@ -208,15 +195,15 @@ export function Hero() {
               aria-selected={i === index}
               aria-label={`${s.title} ${s.highlight}`}
               onClick={() => go(i)}
-              className={cn("h-1.5 rounded-full transition-all", i === index ? "w-10 bg-[#F4C430]" : "w-5 bg-white/40 hover:bg-white/70")}
+              className={cn("h-[3px] rounded-full transition-all", i === index ? "w-10 bg-white" : "w-6 bg-white/40 hover:bg-white/70")}
             />
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <button aria-label="Previous slide" onClick={() => go(index - 1)} className="grid h-10 w-10 place-items-center rounded-full border border-white/30 text-white backdrop-blur hover:bg-white/15">
+          <button aria-label="Previous slide" onClick={() => go(index - 1)} className="grid h-10 w-10 place-items-center rounded-full border border-white/50 text-white hover:bg-white/15">
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <button aria-label="Next slide" onClick={() => go(index + 1)} className="grid h-10 w-10 place-items-center rounded-full border border-white/30 text-white backdrop-blur hover:bg-white/15">
+          <button aria-label="Next slide" onClick={() => go(index + 1)} className="grid h-10 w-10 place-items-center rounded-full border border-white/50 text-white hover:bg-white/15">
             <ChevronRight className="h-5 w-5" />
           </button>
         </div>
@@ -226,7 +213,7 @@ export function Hero() {
         href={slide.credit.href}
         target="_blank"
         rel="noopener noreferrer"
-        className="absolute right-4 top-3 hidden text-[10px] text-white/50 hover:text-white/80 sm:block lg:right-8"
+        className="absolute right-4 top-3 hidden text-[10px] text-white/60 hover:text-white sm:block lg:right-8"
       >
         Photo: {slide.credit.text}
       </a>
@@ -236,9 +223,8 @@ export function Hero() {
       {/* Property search, overlapping the hero (outside the clipped slider) */}
       <div className="relative z-20 -mt-8 px-4 sm:-mt-10 sm:px-6 lg:px-8">
         <form onSubmit={handleSearch} className="mx-auto max-w-5xl" aria-label="Search properties">
-          <div className="flex flex-col gap-2 rounded-2xl border bg-white p-3 shadow-2xl sm:flex-row sm:items-center sm:gap-0 sm:p-2">
-            <div className="flex flex-1 items-center gap-2 px-2 sm:flex-[1.6]">
-              <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <div className="flex flex-col gap-2 rounded-2xl border border-black/5 bg-white p-3 shadow-[0_20px_50px_-20px_rgba(0,0,0,.35)] sm:flex-row sm:items-center sm:gap-0 sm:p-2">
+            <div className="flex flex-1 items-center px-3 sm:flex-[1.6]">
               <Input
                 placeholder="City or area — e.g. East Legon, Kumasi, Abidjan"
                 value={location}
@@ -273,8 +259,8 @@ export function Hero() {
                 </SelectContent>
               </Select>
             </div>
-            <Button type="submit" size="lg" className="h-11 gap-2 px-6 text-white hover:opacity-90 sm:ml-2" style={{ backgroundColor: "#2E8B57" }}>
-              <Search className="h-4 w-4" /> Search
+            <Button type="submit" size="lg" className="h-11 rounded-xl px-7 text-white hover:opacity-90 sm:ml-2" style={{ backgroundColor: "#2E8B57" }}>
+              Search
             </Button>
           </div>
         </form>
