@@ -15,7 +15,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export interface AuthPanelProps {
   /** Which kind of account a NEW user gets. Existing users keep their role. */
-  intent: "agent" | "client";
+  intent: "agent" | "client" | "school";
   /** "signup" also asks for the user's name. */
   mode?: "signin" | "signup";
   /** Where Google/Facebook send the user back after authenticating. */

@@ -39,7 +39,7 @@ export function useOAuthProviders() {
 }
 
 /** Remembers whether a brand-new OAuth user should become an agent or a client. */
-export async function setAuthIntent(intent: "agent" | "client") {
+export async function setAuthIntent(intent: "agent" | "client" | "school") {
   await fetch("/api/auth/intent", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
