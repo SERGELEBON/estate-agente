@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth-context";
@@ -8,6 +8,15 @@ import { ChatBot } from "@/components/chatbot";
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
+});
+
+// Editorial serif for headlines (hero, section titles) — Inter stays the UI/body font.
+const display = Playfair_Display({
+  variable: "--font-display-serif",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -44,7 +53,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} antialiased bg-background text-foreground font-sans`}
+        className={`${inter.variable} ${display.variable} antialiased bg-background text-foreground font-sans`}
       >
         <AuthProvider>
           {children}
