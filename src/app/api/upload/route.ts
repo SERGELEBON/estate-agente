@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
+import { getSessionUser } from "@/lib/auth";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -12,6 +13,12 @@ cloudinary.config({
  * Uses Cloudinary for serverless-compatible storage
  */
 export async function POST(request: NextRequest) {
+  // Only professionals upload media (listings, school logos/photos).
+  const me = await getSessionUser();
+  if (!me) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  if (!["ADMIN", "AGENT", "SCHOOL"].includes(me.role)) {
+    return NextResponse.json({ error: "Not allowed" }, { status: 403 });
+  }
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File;
