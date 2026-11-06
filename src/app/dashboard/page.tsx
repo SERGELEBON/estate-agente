@@ -7,6 +7,7 @@ export default async function DashboardRedirectPage() {
   if (!me) redirect("/auth/signin");
   if (me.role === "ADMIN") redirect("/dashboard/admin");
   if (me.role === "CLIENT") redirect("/account/messages");
+  if (me.role === "SCHOOL") redirect("/dashboard/school");
   if (me.agentStatus === "INCOMPLETE") redirect("/onboarding/agent");
   redirect("/dashboard/agent");
 }
