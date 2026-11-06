@@ -8,18 +8,28 @@ import { db } from "@/lib/db";
 import { verifyOtp } from "@/lib/otp";
 import { INTENT_COOKIE, normalizeEmail } from "@/lib/security";
 
-export type Role = "ADMIN" | "AGENT" | "CLIENT";
+export type Role = "ADMIN" | "AGENT" | "CLIENT" | "SCHOOL";
 export type AgentStatus = "INCOMPLETE" | "PENDING_REVIEW" | "ACTIVE" | "SUSPENDED";
 
 /** How often the JWT re-reads role/status from the DB, so admin decisions apply without re-login. */
 const TOKEN_SYNC_MS = 60_000;
 
-function readIntent(): "agent" | "client" {
+export type AuthIntent = "agent" | "client" | "school";
+
+function readIntent(): AuthIntent {
   try {
-    return cookies().get(INTENT_COOKIE)?.value === "agent" ? "agent" : "client";
+    const v = cookies().get(INTENT_COOKIE)?.value;
+    return v === "agent" || v === "school" ? v : "client";
   } catch {
     return "client";
   }
+}
+
+/** Role + initial status for a brand-new account, from what the visitor signed up as. */
+export function newAccountFields(intent: string | undefined | null) {
+  if (intent === "agent") return { role: "AGENT", agentStatus: "INCOMPLETE" };
+  if (intent === "school") return { role: "SCHOOL", agentStatus: "ACTIVE" }; // the School row carries its own review status
+  return { role: "CLIENT", agentStatus: "ACTIVE" };
 }
 
 const providers: NextAuthOptions["providers"] = [
@@ -73,10 +83,8 @@ const providers: NextAuthOptions["providers"] = [
               email,
               name: name ?? email.split("@")[0],
               emailVerified: new Date(),
-              // New agents still have to complete their profile and be approved by an admin.
-              ...(credentials.intent === "agent"
-                ? { role: "AGENT", agentStatus: "INCOMPLETE" }
-                : { role: "CLIENT" }),
+              // Agents and schools still complete a profile and get approved by an admin.
+              ...newAccountFields(credentials.intent),
             },
           });
       return { id: user.id, email: user.email, name: user.name, image: user.image, role: user.role } as any;
@@ -140,8 +148,7 @@ export const authOptions: NextAuthOptions = {
             name: user.name ?? email.split("@")[0],
             image: user.image,
             emailVerified: new Date(),
-            role: intent === "agent" ? "AGENT" : "CLIENT",
-            agentStatus: intent === "agent" ? "INCOMPLETE" : "ACTIVE",
+            ...newAccountFields(intent),
           },
         });
       } else if (!dbUser.image || !dbUser.emailVerified) {
