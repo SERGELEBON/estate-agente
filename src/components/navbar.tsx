@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/auth-context";
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/properties", label: "Properties" },
+  { href: "/schools", label: "Language Schools" },
   { href: "/short-stay", label: "Short-Stay" },
   { href: "/contact", label: "Contact" },
 ];
@@ -39,7 +40,7 @@ export function Navbar() {
   }, []);
 
   const dashboardPath =
-    role === "ADMIN" ? "/dashboard/admin" : role === "CLIENT" ? "/account/messages" : "/dashboard/agent";
+    role === "ADMIN" ? "/dashboard/admin" : role === "CLIENT" ? "/account/messages" : role === "SCHOOL" ? "/dashboard/school" : "/dashboard/agent";
   const dashboardLabel = role === "CLIENT" ? "My messages" : "Dashboard";
 
   const isActive = (href: string) => {
