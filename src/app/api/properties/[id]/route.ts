@@ -90,6 +90,11 @@ export async function PUT(
     }
 
     const body = await request.json();
+    // Only admins can reassign a listing or mark it featured.
+    if (userRole !== "ADMIN") {
+      delete body.agentId;
+      delete body.featured;
+    }
     const validatedData = propertyUpdateSchema.parse(body);
 
     // If slug is being updated, ensure uniqueness
