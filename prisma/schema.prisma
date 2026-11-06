@@ -50,7 +50,7 @@ model User {
   emailVerified DateTime?
   image         String?
   password      String?   // hashed – null for OAuth-only users
-  role          String    @default("AGENT") // ADMIN | AGENT | CLIENT
+  role          String    @default("AGENT") // ADMIN | AGENT | CLIENT | SCHOOL
   // Agent onboarding lifecycle: INCOMPLETE -> PENDING_REVIEW -> ACTIVE (or SUSPENDED).
   // Defaults to ACTIVE so pre-existing accounts keep working; new self-service agents are created INCOMPLETE.
   agentStatus        String    @default("ACTIVE")
@@ -74,6 +74,8 @@ model User {
   agentConversations  Conversation[] @relation("AgentConversations")
   sentMessages        Message[]  @relation("MessageSenders")
   clientConversations Conversation[] @relation("ClientConversations")
+  school              School?        @relation("SchoolOwner")
+  schoolReviews       SchoolReview[]
 }
 
 // ─── Property Model ─────────────────────────────────────────
@@ -111,6 +113,8 @@ model Property {
   messages       Message[]
   visits         Visit[]
   conversations  Conversation[]
+
+  @@index([status, country, city])
 }
 
 // ─── Conversation Model (social-network style) ──────────────
@@ -207,4 +211,69 @@ model Visit {
   agent       User     @relation(fields: [agentId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ─── Language schools (English in Ghana, French in Ghana & francophone Africa) ───
+model School {
+  id             String    @id @default(cuid())
+  ownerId        String    @unique
+  owner          User      @relation("SchoolOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  name           String
+  slug           String    @unique
+  tagline        String?
+  description    String
+  teachesEnglish Boolean   @default(false)
+  teachesFrench  Boolean   @default(false)
+  levels         String    @default("[]") // JSON: BEGINNER | INTERMEDIATE | ADVANCED
+  formats        String    @default("[]") // JSON: IN_PERSON | ONLINE | INTENSIVE | PRIVATE | EVENING | KIDS
+  exams          String    @default("[]") // JSON: IELTS | TOEFL | TOEIC | CAMBRIDGE | DELF | DALF | TCF | TEF
+
+  country        String    // ISO code: GH | CI | TG | BJ | SN | BF
+  city           String
+  address        String?
+  phone          String?
+  whatsapp       String?
+  email          String?
+  website        String?
+  logo           String?
+  coverImage     String?
+  accreditation  String?
+  priceFrom      Float?
+  currency       String    @default("GHS")
+  priceUnit      String    @default("MONTH") // HOUR | WEEK | MONTH | COURSE
+
+  status         String    @default("PENDING_REVIEW") // PENDING_REVIEW | ACTIVE | SUSPENDED
+  featured       Boolean   @default(false)
+  reviewedAt     DateTime?
+  // Denormalised from visible reviews, recomputed on every review change
+  ratingAvg      Float     @default(0)
+  ratingCount    Int       @default(0)
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  reviews        SchoolReview[]
+
+  @@index([status, country, city])
+  @@index([status, ratingAvg])
+}
+
+model SchoolReview {
+  id        String    @id @default(cuid())
+  schoolId  String
+  school    School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  rating    Int       // 1..5
+  title     String?
+  comment   String
+  hidden    Boolean   @default(false) // moderated by an admin
+  reply     String?   // public answer from the school
+  repliedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([schoolId, authorId]) // one review per client and school
+  @@index([schoolId, hidden, createdAt])
 }

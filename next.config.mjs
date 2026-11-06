@@ -45,6 +45,12 @@ const nextConfig = {
         protocol: "https",
         hostname: "res.cloudinary.com",
       },
+      {
+        // Hero photos from Wikimedia Commons (CC licences, credited on each slide)
+        protocol: "https",
+        hostname: "upload.wikimedia.org",
+        pathname: "/wikipedia/commons/**",
+      },
     ],
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 60,

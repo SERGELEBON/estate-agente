@@ -23,15 +23,18 @@ export const conversationInclude = {
   },
 };
 
-/** Agents a client may contact: verified agents, or admins (platform support). */
+/** Who a client may contact: verified agents, published schools (their owner), or admins (support). */
 export async function findContactableAgent(agentId: string) {
   const agent = await db.user.findUnique({
     where: { id: agentId },
-    select: { id: true, name: true, email: true, role: true, agentStatus: true },
+    select: { id: true, name: true, email: true, role: true, agentStatus: true, school: { select: { name: true, status: true } } },
   });
   if (!agent) return null;
-  if (agent.role === "ADMIN") return agent;
-  if (agent.role === "AGENT" && agent.agentStatus === "ACTIVE") return agent;
+  const { school, ...user } = agent;
+  if (user.role === "ADMIN") return user;
+  if (user.role === "AGENT" && user.agentStatus === "ACTIVE") return user;
+  // Conversations with a school show the school's name, not the owner's personal name.
+  if (user.role === "SCHOOL" && school?.status === "ACTIVE") return { ...user, name: school.name };
   return null;
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { COUNTRIES, countryByName, propertyCurrencyFor } from "@/lib/geo";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -55,7 +56,10 @@ export default function PropertyForm({
   agents = [],
   agentId,
   redirectPath,
+  property,
+  onSubmit,
 }: PropertyFormProps) {
+  const isEdit = !!property;
   const router = useRouter();
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -68,6 +72,7 @@ export default function PropertyForm({
     currency: "GHC",
     location: "",
     city: "Accra",
+    country: "Ghana",
     type: "",
     listingType: "SALE",
     priceDuration: "MONTH",
@@ -91,6 +96,45 @@ export default function PropertyForm({
   const handleChange = useCallback((field: string, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   }, []);
+
+  // Edit mode: prefill every field from the existing listing (previously the form opened empty).
+  useEffect(() => {
+    if (!property) return;
+    const str = (v: unknown) => (v === null || v === undefined ? "" : String(v));
+    setForm((prev) => ({
+      ...prev,
+      title: str(property.title),
+      description: str(property.description),
+      price: str(property.price),
+      currency: property.currency ?? prev.currency,
+      location: str(property.location),
+      city: property.city ?? prev.city,
+      country: property.country ?? prev.country,
+      type: property.type ?? "",
+      listingType: property.listingType ?? prev.listingType,
+      priceDuration: property.priceDuration ?? prev.priceDuration,
+      status: property.status ?? prev.status,
+      bedrooms: str(property.bedrooms),
+      bathrooms: str(property.bathrooms),
+      area: str(property.area),
+      furnished: !!property.furnished,
+      parking: !!property.parking,
+      pool: !!property.pool,
+      gym: !!property.gym,
+      featured: !!property.featured,
+      selectedAgentId: property.agentId ?? property.agent?.id ?? "",
+    }));
+    const parse = (v: unknown): string[] => {
+      try {
+        const a = typeof v === "string" ? JSON.parse(v) : v;
+        return Array.isArray(a) ? a : [];
+      } catch {
+        return [];
+      }
+    };
+    setImageItems(parse(property.images).map((url) => ({ url, type: "image" as const })));
+    setVideoItems(parse(property.videos).map((url) => ({ url, type: "video" as const })));
+  }, [property]);
 
   const uploadFile = useCallback(async (file: File, type: "image" | "video") => {
     const formData = new FormData();
@@ -206,8 +250,8 @@ export default function PropertyForm({
           currency: form.currency,
           location: form.location,
           city: form.city,
-          region: "Greater Accra",
-          country: "Ghana",
+          region: form.country === "Ghana" && form.city === "Accra" ? "Greater Accra" : form.city,
+          country: form.country,
           type: form.type,
           listingType: form.listingType,
           priceDuration: form.priceDuration,
@@ -225,6 +269,14 @@ export default function PropertyForm({
           agentId: mode === "admin" ? form.selectedAgentId : agentId,
         };
 
+        // Edit pages pass onSubmit (PUT /api/properties/[id]); creation posts a new listing.
+        if (onSubmit) {
+          await onSubmit(body);
+          toast.success("Property updated");
+          window.location.href = redirectPath;
+          return;
+        }
+
         const res = await fetch("/api/properties", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -238,13 +290,13 @@ export default function PropertyForm({
           const data = await res.json();
           toast.error(data.error || "Failed to create property");
         }
-      } catch {
-        toast.error("Failed to create property");
+      } catch (err: any) {
+        toast.error(err?.message || (isEdit ? "Failed to update property" : "Failed to create property"));
       } finally {
         setLoading(false);
       }
     },
-    [form, mode, agentId, redirectPath, imageItems, videoItems]
+    [form, mode, agentId, redirectPath, imageItems, videoItems, onSubmit, isEdit]
   );
 
   const isUploading = imageItems.some((i) => i.uploading) || videoItems.some((v) => v.uploading);
@@ -258,7 +310,7 @@ export default function PropertyForm({
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">Add New Property</h1>
+          <h1 className="text-2xl font-bold">{isEdit ? "Edit Property" : "Add New Property"}</h1>
           <p className="text-muted-foreground">
             {mode === "admin"
               ? "Create a new property listing and assign it to an agent"
@@ -300,7 +352,7 @@ export default function PropertyForm({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="price">Price (GHC) *</Label>
+                    <Label htmlFor="price">Price ({form.currency === "GHC" ? "GH₵" : form.currency}) *</Label>
                     <Input
                       id="price"
                       type="number"
@@ -320,6 +372,45 @@ export default function PropertyForm({
                       onChange={(e) => handleChange("location", e.target.value)}
                       placeholder="e.g. East Legon, Accra"
                     />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Country *</Label>
+                    <Select
+                      value={form.country}
+                      onValueChange={(val) => {
+                        handleChange("country", val);
+                        handleChange("city", countryByName(val)?.cities[0] ?? "");
+                        handleChange("currency", propertyCurrencyFor(val));
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COUNTRIES.map((c) => (
+                          <SelectItem key={c.code} value={c.name}>
+                            {c.flag} {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="city">City *</Label>
+                    <Input
+                      id="city"
+                      required
+                      list="property-cities"
+                      value={form.city}
+                      onChange={(e) => handleChange("city", e.target.value)}
+                    />
+                    <datalist id="property-cities">
+                      {countryByName(form.country)?.cities.map((c) => (
+                        <option key={c} value={c} />
+                      ))}
+                    </datalist>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -665,12 +756,12 @@ export default function PropertyForm({
                   {loading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Creating...
+                      {isEdit ? "Saving..." : "Creating..."}
                     </>
                   ) : isUploading ? (
                     "Uploading files..."
                   ) : (
-                    "Create Property"
+                    isEdit ? "Save Changes" : "Create Property"
                   )}
                 </Button>
               </CardContent>

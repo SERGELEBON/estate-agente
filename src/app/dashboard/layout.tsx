@@ -21,6 +21,8 @@ import {
   ExternalLink,
   User,
   Home,
+  GraduationCap,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -72,6 +74,11 @@ const adminNavItems = [
     icon: Users,
   },
   {
+    label: "Schools",
+    href: "/dashboard/admin/schools",
+    icon: GraduationCap,
+  },
+  {
     label: "Messages",
     href: "/dashboard/admin/messages",
     icon: MessageSquare,
@@ -86,6 +93,12 @@ const adminNavItems = [
     href: "/dashboard/admin/properties/new",
     icon: PlusCircle,
   },
+];
+
+const schoolNavItems = [
+  { label: "My school", href: "/dashboard/school", icon: GraduationCap },
+  { label: "Reviews", href: "/dashboard/school/reviews", icon: Star },
+  { label: "Messages", href: "/dashboard/school/messages", icon: MessageSquare },
 ];
 
 function SidebarContent({
@@ -126,6 +139,7 @@ function SidebarContent({
             pathname === item.href ||
             (item.href !== "/dashboard/agent" &&
               item.href !== "/dashboard/admin" &&
+              item.href !== "/dashboard/school" &&
               pathname?.startsWith(item.href));
           // Boolean guard: `0 && …` would render a stray "0" next to every link
           const showBadge = (unreadCount ?? 0) > 0 && item.label === "Messages";
@@ -258,7 +272,9 @@ export default function DashboardLayout({
   const navItems =
     role === "ADMIN"
       ? adminNavItems
-      : agentNavItems.filter((i) => agentVerified || i.href !== "/dashboard/agent/properties/new");
+      : role === "SCHOOL"
+        ? schoolNavItems
+        : agentNavItems.filter((i) => agentVerified || i.href !== "/dashboard/agent/properties/new");
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -295,7 +311,7 @@ export default function DashboardLayout({
 
           <div className="flex-1">
             <h2 className="text-sm font-medium">
-              {role === "ADMIN" ? "Admin Dashboard" : "Agent Dashboard"}
+              {role === "ADMIN" ? "Admin Dashboard" : role === "SCHOOL" ? "School Dashboard" : "Agent Dashboard"}
             </h2>
           </div>
 
@@ -306,7 +322,7 @@ export default function DashboardLayout({
             </Button>
           </Link>
 
-          <NotificationBell messagesHref={role === "ADMIN" ? "/dashboard/admin/messages" : "/dashboard/agent/messages"} />
+          <NotificationBell messagesHref={role === "ADMIN" ? "/dashboard/admin/messages" : role === "SCHOOL" ? "/dashboard/school/messages" : "/dashboard/agent/messages"} />
 
           <Link href="/dashboard/profile">
             <Avatar className="h-8 w-8 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all">

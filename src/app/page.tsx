@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { Hero } from "@/components/hero";
+import { Services } from "@/components/home/services";
 import { Footer } from "@/components/footer";
 import { PropertyCard } from "@/components/property-card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -126,6 +127,7 @@ export default function HomePage() {
       <Navbar />
       <main className="flex-1">
         <Hero />
+        <Services />
 
         {/* Recent Properties - News Feed Style */}
         <section className="py-16 md:py-20">

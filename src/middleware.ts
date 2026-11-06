@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
  * Route guard (edge). Role & agent status come from the signed JWT, which the server
  * re-syncs from the database every minute (see jwt callback in src/lib/auth.ts).
  *
- *  /dashboard/*   ADMIN, or AGENT whose profile is complete
+ *  /dashboard/*   ADMIN, AGENT whose profile is complete, SCHOOL (only /dashboard/school + profile)
  *  /onboarding/*  AGENT only
  *  /account/*     any signed-in user (clients' space), except /account/signin
  */
@@ -37,6 +37,13 @@ export async function middleware(req: NextRequest) {
 
   // /dashboard
   if (role === "CLIENT" || !role) return redirect("/account/messages");
+  if (role === "SCHOOL") {
+    const allowed = pathname.startsWith("/dashboard/school") || pathname.startsWith("/dashboard/profile");
+    return allowed ? NextResponse.next() : redirect("/dashboard/school");
+  }
+  if (pathname.startsWith("/dashboard/school")) {
+    return redirect(role === "ADMIN" ? "/dashboard/admin/schools" : "/dashboard/agent");
+  }
   if (role === "AGENT") {
     if (status === "INCOMPLETE") return redirect("/onboarding/agent");
     if (pathname.startsWith("/dashboard/admin")) return redirect("/dashboard/agent");

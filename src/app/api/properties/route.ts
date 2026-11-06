@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { FRANCOPHONE_COUNTRY_NAMES } from "@/lib/geo";
 import { db } from "@/lib/db";
 import { propertySchema } from "@/lib/validators";
 import { slugify } from "@/lib/helpers";
@@ -19,6 +20,9 @@ export async function GET(request: NextRequest) {
     const featured = searchParams.get("featured");
     const statusFilter = searchParams.get("status");
     const agentFilter = searchParams.get("agentId");
+    const countryFilter = searchParams.get("country"); // one or more names, comma separated
+    const cityFilter = searchParams.get("city"); // one or more cities, comma separated
+    const regionGroup = searchParams.get("region"); // "francophone"
     const sort = searchParams.get("sort"); // recent, featured, price-asc, price-desc
     const page = parseInt(searchParams.get("page") ?? "1", 10);
     const limit = parseInt(searchParams.get("limit") ?? "12", 10);
@@ -53,10 +57,20 @@ export async function GET(request: NextRequest) {
     }
     if (location) {
       where.OR = [
-        { location: { contains: location } },
-        { city: { contains: location } },
-        { region: { contains: location } },
+        { location: { contains: location, mode: "insensitive" } },
+        { city: { contains: location, mode: "insensitive" } },
+        { region: { contains: location, mode: "insensitive" } },
+        { country: { contains: location, mode: "insensitive" } },
       ];
+    }
+    const listParam = (v: string | null) => (v ?? "").split(",").map((x) => x.trim()).filter(Boolean).slice(0, 12);
+    if (regionGroup === "francophone") {
+      where.country = { in: FRANCOPHONE_COUNTRY_NAMES };
+    } else if (countryFilter) {
+      where.country = { in: listParam(countryFilter) };
+    }
+    if (cityFilter) {
+      where.AND = [{ OR: listParam(cityFilter).map((c) => ({ city: { equals: c, mode: "insensitive" } })) }];
     }
     if (featured === "true") {
       where.featured = true;
